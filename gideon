@@ -1,0 +1,530 @@
+#!/usr/bin/env bash
+# gideon — One command. All identities. Every machine.
+#
+# A zero-dependency CLI tool for automated Git multi-identity
+# and SSH key setup. Clone, run, done.
+#
+# Usage: ./gideon setup [--dry-run]
+#        ./gideon status
+#        ./gideon verify
+#        ./gideon guard --install | --uninstall
+#        ./gideon --help | --version
+#
+# https://github.com/bhaskarjha-com/gideon
+# MIT License — Bhaskar Jha
+
+# --- CRLF self-healing for VirtualBox shared folders ---
+# vboxsf injects \r into all files. Unconditionally re-exec through tr on first run.
+# tr -d '\r' is a no-op on clean files, so this is safe everywhere.
+# shellcheck disable=SC2270
+test "${GIDEON_CRLF_CLEAN:-}" = "1" || { export GIDEON_CRLF_CLEAN=1; export GIDEON_ORIG_SCRIPT="${BASH_SOURCE[0]:-$0}"; exec bash <(tr -d '\r' < "${BASH_SOURCE[0]:-$0}") "$@"; }
+
+set -euo pipefail
+
+# ------------------------------------------------------------------------------
+# Resolve script directory (handles symlinks, $0 fallback, vboxsf CRLF re-exec)
+# ------------------------------------------------------------------------------
+resolve_script_dir() {
+    # When re-executed for CRLF cleaning, BASH_SOURCE is /dev/fd/N.
+    # Use GIDEON_ORIG_SCRIPT (set before re-exec) to find the real script.
+    # Strip \r because the env var was set from a CRLF-contaminated line.
+    local source
+    source=$(printf '%s' "${GIDEON_ORIG_SCRIPT:-${BASH_SOURCE[0]:-$0}}" | tr -d '\r')
+
+    # If source is empty or just a basename, try $0
+    if [[ -z "$source" ]] || [[ "$source" == "bash" ]]; then
+        source="$0"
+    fi
+
+    # If still relative, make it absolute
+    if [[ "$source" != /* ]]; then
+        source="$(pwd)/$source"
+    fi
+
+    # Resolve symlinks
+    while [[ -L "$source" ]]; do
+        local link_dir
+        link_dir=$(cd -P "$(dirname "$source")" 2>/dev/null && pwd)
+        source=$(readlink "$source")
+        if [[ "$source" != /* ]]; then
+            source="$link_dir/$source"
+        fi
+    done
+
+    local dir
+    dir=$(cd -P "$(dirname "$source")" 2>/dev/null && pwd)
+    printf '%s' "$dir"
+}
+
+GIDEON_SCRIPT_DIR=$(resolve_script_dir | tr -d '\r')
+
+# ------------------------------------------------------------------------------
+# Source all library modules
+# Strip \r from sourced files for vboxsf compatibility
+# ------------------------------------------------------------------------------
+gideon_source() {
+    # shellcheck disable=SC1090
+    source <(tr -d '\r' < "$1")
+}
+gideon_source "$GIDEON_SCRIPT_DIR/lib/core.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/platform.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/ui.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/validate.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/backup.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/ssh.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/gitconfig.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/guard.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/verify.sh"
+
+# ------------------------------------------------------------------------------
+# Signal trap — clean exit on Ctrl+C
+# ------------------------------------------------------------------------------
+cleanup() {
+    printf >&2 '\n'
+    print_warning "Interrupted. No changes were made (or partial changes were backed up)."
+    exit 130
+}
+trap cleanup SIGINT SIGTERM
+
+# ------------------------------------------------------------------------------
+# Usage / Help text
+# ------------------------------------------------------------------------------
+show_help() {
+    cat >&2 <<EOF
+${BOLD}gideon${RESET} v${GIDEON_VERSION} — One command. All identities. Every machine.
+
+${BOLD}USAGE${RESET}
+    gideon setup [--dry-run]        Interactive setup wizard
+    gideon status                   Show current identity configuration
+    gideon verify                   Test SSH keys and git config
+    gideon guard --install          Install pre-commit identity guard hook
+    gideon guard --uninstall        Remove the guard hook
+    gideon --help, -h               Show this help
+    gideon --version, -v            Show version
+
+${BOLD}DESCRIPTION${RESET}
+    gideon automates the setup of multiple Git identities and SSH keys.
+    It generates Ed25519 SSH keys, creates ~/.gitconfig with conditional
+    includes, sets up ~/.ssh/config host aliases, and verifies everything
+    works — all in a single interactive session.
+
+${BOLD}EXAMPLES${RESET}
+    ${DIM}# First-time setup:${RESET}
+    git clone https://github.com/bhaskarjha-com/gideon.git
+    cd gideon
+    ./gideon setup
+
+    ${DIM}# Preview what setup would do:${RESET}
+    ./gideon setup --dry-run
+
+    ${DIM}# Check current identity:${RESET}
+    ./gideon status
+
+    ${DIM}# Install commit safety net:${RESET}
+    ./gideon guard --install
+
+${BOLD}MORE INFO${RESET}
+    https://github.com/bhaskarjha-com/gideon
+EOF
+}
+
+show_version() {
+    printf 'gideon v%s\n' "$GIDEON_VERSION"
+}
+
+# ------------------------------------------------------------------------------
+# cmd_status — Show current identity configuration
+# ------------------------------------------------------------------------------
+cmd_status() {
+    detect_os
+
+    print_header
+
+    # Current directory info
+    local cwd
+    cwd=$(pwd)
+    print_section "Current Directory"
+    printf >&2 '  %s\n\n' "$cwd"
+
+    # Current git identity
+    local current_name current_email
+    current_name=$(git config user.name 2>/dev/null || echo "(not set)")
+    current_email=$(git config user.email 2>/dev/null || echo "(not set)")
+
+    print_section "Active Git Identity"
+    printf >&2 '  Name:  %b%s%b\n' "$BOLD" "$current_name" "$RESET"
+    printf >&2 '  Email: %b%s%b\n' "$BOLD" "$current_email" "$RESET"
+
+    # Check if inside a git repo
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        local repo_root
+        repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+        printf >&2 '  Repo:  %s\n' "$repo_root"
+
+        local ssh_cmd
+        ssh_cmd=$(git config core.sshCommand 2>/dev/null || echo "(default)")
+        printf >&2 '  SSH:   %s\n' "$ssh_cmd"
+    fi
+
+    # Show profile registry if it exists
+    if [[ -f "$GIDEON_PROFILES_CONF" ]]; then
+        print_section "Configured Profiles"
+        printf >&2 '  %-12s %-30s %s\n' "Label" "Email" "Directory"
+        printf >&2 '  %-12s %-30s %s\n' "-----" "-----" "---------"
+
+        while IFS=: read -r label email dir || [[ -n "$label" ]]; do
+            [[ "$label" == "#"* ]] && continue
+            [[ -z "$label" ]] && continue
+            printf >&2 '  %-12s %-30s %s\n' "$label" "$email" "$dir"
+        done < "$GIDEON_PROFILES_CONF"
+    else
+        print_info "No profiles configured. Run 'gideon setup' to get started."
+    fi
+
+    printf >&2 '\n'
+
+    # Platform info
+    print_section "Environment"
+    printf >&2 '  OS:       %s\n' "$GIDEON_OS"
+    printf >&2 '  Bash:     %s\n' "${BASH_VERSION:-unknown}"
+    printf >&2 '  Git:      %s\n' "$(git --version 2>/dev/null | head -n1)"
+    printf >&2 '  Config:   %s\n' "$GIDEON_CONFIG_DIR"
+    printf >&2 '\n'
+}
+
+# ------------------------------------------------------------------------------
+# cmd_verify — Run all verification checks
+# ------------------------------------------------------------------------------
+cmd_verify() {
+    detect_os
+    print_header
+
+    # Load profiles from registry
+    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
+        print_error "No profiles configured. Run 'gideon setup' first."
+        return 1
+    fi
+
+    # Read profiles from registry
+    PROFILE_COUNT=0
+    while IFS=: read -r label email dir || [[ -n "$label" ]]; do
+        [[ "$label" == "#"* ]] && continue
+        [[ -z "$label" ]] && continue
+        PROFILE_LABELS+=("$label")
+        PROFILE_EMAILS+=("$email")
+        PROFILE_DIRS+=("$dir")
+        PROFILE_COUNT=$((PROFILE_COUNT + 1))
+    done < "$GIDEON_PROFILES_CONF"
+
+    if [[ "$PROFILE_COUNT" -eq 0 ]]; then
+        print_error "No profiles found in registry. Run 'gideon setup' first."
+        return 1
+    fi
+
+    verify_all
+}
+
+# ------------------------------------------------------------------------------
+# cmd_setup — Interactive setup wizard
+# ------------------------------------------------------------------------------
+cmd_setup() {
+    detect_os
+
+    print_header
+
+    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+        print_info "DRY RUN MODE — no files will be written"
+        printf >&2 '\n'
+    fi
+
+    # --- Preflight ---
+    print_section "Preflight Checks"
+    printf >&2 '  OS detected: %b%s%b\n' "$BOLD" "$GIDEON_OS" "$RESET"
+
+    if ! check_prerequisites; then
+        return 1
+    fi
+    print_success "All prerequisites met"
+
+    # Check for shared folder
+    if is_shared_mount "$HOME" 2>/dev/null; then
+        print_warning "Home directory appears to be on a shared folder."
+        print_info "SSH keys will be stored on the native filesystem at ~/.ssh"
+    fi
+
+    # --- Collect profiles ---
+    print_section "Profile Configuration"
+    print_info "A profile defines a Git identity (name, email, SSH key)."
+    print_info "The first profile will be your default/global identity."
+    printf >&2 '\n'
+
+    # Ask how many profiles
+    ask_count "How many profiles do you need?" 1 10
+    local num_profiles="$REPLY"
+
+    local i
+    for i in $(seq 1 "$num_profiles"); do
+        print_section "Profile $i of $num_profiles"
+
+        # Label
+        if [[ "$i" -eq 1 ]]; then
+            print_info "This is your DEFAULT profile (used when no directory rule matches)."
+            ask "Profile label" "global"
+        else
+            ask_required "Profile label (e.g., pro, work, oss)"
+        fi
+        local label
+        label=$(to_lower "$REPLY")
+
+        # Validate label
+        while ! validate_label "$label"; do
+            print_warning "Label must be lowercase letters, numbers, and hyphens (1-20 chars, starts with letter)."
+            ask_required "Profile label"
+            label=$(to_lower "$REPLY")
+        done
+
+        # Check for duplicate
+        while array_contains "$label" "${PROFILE_LABELS[@]+"${PROFILE_LABELS[@]}"}"; do
+            print_warning "Label '$label' already used. Choose a different one."
+            ask_required "Profile label"
+            label=$(to_lower "$REPLY")
+        done
+
+        # Name
+        local default_name=""
+        if [[ "$i" -eq 1 ]]; then
+            default_name=$(git config --global user.name 2>/dev/null || echo "")
+        fi
+        ask "Full name" "$default_name"
+        local name="$REPLY"
+        if [[ -z "$name" ]]; then
+            ask_required "Full name"
+            name="$REPLY"
+        fi
+
+        # Email
+        local default_email=""
+        if [[ "$i" -eq 1 ]]; then
+            default_email=$(git config --global user.email 2>/dev/null || echo "")
+        fi
+        ask_email "Email address" "$default_email"
+        local email="$REPLY"
+
+        # Directory (not needed for default profile — it's the fallback)
+        local dir=""
+        if [[ "$i" -gt 1 ]]; then
+            ask_path "Directory for this profile (e.g., ~/dev/work)" ""
+            dir="$REPLY"
+
+            while [[ -z "$dir" ]]; do
+                print_warning "Directory is required for non-default profiles."
+                ask_path "Directory for this profile" ""
+                dir="$REPLY"
+            done
+
+            # Validate no overlap
+            if ! validate_no_overlap "$dir" "${PROFILE_DIRS[@]+"${PROFILE_DIRS[@]}"}"; then
+                print_warning "Directory '$dir' overlaps with an existing profile."
+                print_info "Git uses the last matching includeIf, so overlaps can cause confusion."
+                if ! confirm "Continue anyway?" "n"; then
+                    print_info "Skipping this profile."
+                    continue
+                fi
+            fi
+        fi
+
+        # Store profile
+        PROFILE_LABELS+=("$label")
+        PROFILE_NAMES+=("$name")
+        PROFILE_EMAILS+=("$email")
+        PROFILE_DIRS+=("$dir")
+        PROFILE_COUNT=$((PROFILE_COUNT + 1))
+
+        print_success "Profile '$label' configured: $name <$email>"
+    done
+
+    # --- Review plan ---
+    print_section "Setup Plan"
+    printf >&2 '  The following will be created/updated:\n\n'
+
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        local label="${PROFILE_LABELS[$i]}"
+        local name="${PROFILE_NAMES[$i]}"
+        local email="${PROFILE_EMAILS[$i]}"
+        local dir="${PROFILE_DIRS[$i]}"
+
+        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
+            printf >&2 '  %b%s%b (default)\n' "$BOLD" "$label" "$RESET"
+        else
+            printf >&2 '  %b%s%b → %s\n' "$BOLD" "$label" "$RESET" "$dir"
+        fi
+        printf >&2 '    Name:  %s\n' "$name"
+        printf >&2 '    Email: %s\n' "$email"
+        printf >&2 '    Key:   ~/.ssh/id_ed25519_%s\n\n' "$label"
+    done
+
+    printf >&2 '  %bFiles:%b\n' "$BOLD" "$RESET"
+    printf >&2 '    %s SSH key pairs\n' "$PROFILE_COUNT"
+    printf >&2 '    ~/.gitconfig (global config with includeIf rules)\n'
+    printf >&2 '    %d profile config(s) in %s\n' "$((PROFILE_COUNT - 1))" "$GIDEON_PROFILES_DIR"
+    printf >&2 '    ~/.ssh/config (host aliases for cloning)\n'
+    printf >&2 '\n'
+
+    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+        print_info "DRY RUN — showing what would be generated:"
+        printf >&2 '\n'
+    else
+        if ! confirm "Proceed with setup?" "y"; then
+            print_info "Setup cancelled. No changes made."
+            return 0
+        fi
+    fi
+
+    # --- Execute setup ---
+    ensure_dirs
+
+    # 1. Generate SSH keys
+    print_section "Generating SSH Keys"
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        generate_ssh_key "${PROFILE_LABELS[$i]}" "${PROFILE_EMAILS[$i]}"
+    done
+
+    # 2. Write profile gitconfigs (for non-default profiles)
+    print_section "Writing Git Configuration"
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        if [[ "$i" -ne "$DEFAULT_PROFILE_INDEX" ]]; then
+            write_profile_gitconfig "${PROFILE_LABELS[$i]}" "${PROFILE_NAMES[$i]}" "${PROFILE_EMAILS[$i]}"
+        fi
+    done
+
+    # 3. Write global gitconfig
+    write_global_gitconfig
+
+    # 4. Write SSH config
+    print_section "Updating SSH Configuration"
+    write_ssh_config
+
+    # 5. Write profiles registry
+    write_profiles_conf
+
+    # 6. Display public keys
+    if [[ "$GIDEON_DRY_RUN" -eq 0 ]]; then
+        display_public_keys
+    fi
+
+    # 7. Offer guard hook
+    if [[ "$GIDEON_DRY_RUN" -eq 0 ]]; then
+        print_section "Identity Guard Hook"
+        print_info "gideon can install a pre-commit hook that warns if you're"
+        print_info "about to commit with the wrong identity for a directory."
+        printf >&2 '\n'
+
+        if confirm "Install the identity guard hook?" "y"; then
+            install_guard
+        else
+            print_info "Skipped. You can install later with: gideon guard --install"
+        fi
+    fi
+
+    # 8. Show next steps
+    print_section "Next Steps"
+    printf >&2 '  %b1.%b Add your public keys to GitHub/GitLab (see above)\n' "$BOLD" "$RESET"
+    printf >&2 '     → %bhttps://github.com/settings/ssh/new%b\n\n' "$CYAN" "$RESET"
+
+    printf >&2 '  %b2.%b Test SSH connectivity:\n' "$BOLD" "$RESET"
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        printf >&2 '     ssh -T git@github-%s\n' "${PROFILE_LABELS[$i]}"
+    done
+    printf >&2 '\n'
+
+    printf >&2 '  %b3.%b Clone repos using the profile host alias:\n' "$BOLD" "$RESET"
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        printf >&2 '     git clone git@github-%s:username/repo.git\n' "${PROFILE_LABELS[$i]}"
+    done
+    printf >&2 '\n'
+
+    printf >&2 '  %b4.%b Verify your setup:\n' "$BOLD" "$RESET"
+    printf >&2 '     ./gideon verify\n\n'
+
+    # SSH agent advice
+    print_section "SSH Agent Setup"
+    get_ssh_agent_advice
+    printf >&2 '\n'
+
+    print_success "Setup complete! You're ready to go."
+    printf >&2 '\n'
+}
+
+# ------------------------------------------------------------------------------
+# Main — Parse arguments and route to subcommand
+# ------------------------------------------------------------------------------
+main() {
+    # No arguments → show brief usage
+    if [[ $# -eq 0 ]]; then
+        printf >&2 '%bgideon%b v%s — One command. All identities. Every machine.\n\n' \
+            "$BOLD" "$RESET" "$GIDEON_VERSION"
+        printf >&2 'Usage: gideon setup [--dry-run]    Start the setup wizard\n'
+        printf >&2 '       gideon status               Show current identity\n'
+        printf >&2 '       gideon verify               Test SSH and git config\n'
+        printf >&2 '       gideon guard --install       Install commit guard hook\n'
+        printf >&2 '       gideon --help                Full help\n\n'
+        return 0
+    fi
+
+    local cmd="$1"
+    shift
+
+    case "$cmd" in
+        setup)
+            # Parse setup flags
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --dry-run)
+                        GIDEON_DRY_RUN=1
+                        shift
+                        ;;
+                    *)
+                        print_error "Unknown flag: $1"
+                        printf >&2 'Usage: gideon setup [--dry-run]\n'
+                        return 1
+                        ;;
+                esac
+            done
+            cmd_setup
+            ;;
+        status)
+            cmd_status
+            ;;
+        verify)
+            cmd_verify
+            ;;
+        guard)
+            if [[ $# -eq 0 ]]; then
+                print_error "Usage: gideon guard --install | --uninstall"
+                return 1
+            fi
+            case "$1" in
+                --install)   detect_os; install_guard ;;
+                --uninstall) detect_os; uninstall_guard ;;
+                *)
+                    print_error "Unknown flag: $1"
+                    printf >&2 'Usage: gideon guard --install | --uninstall\n'
+                    return 1
+                    ;;
+            esac
+            ;;
+        --help|-h|help)
+            show_help
+            ;;
+        --version|-v)
+            show_version
+            ;;
+        *)
+            print_error "Unknown command: $cmd"
+            printf >&2 'Run "gideon --help" for usage.\n'
+            return 1
+            ;;
+    esac
+}
+
+main "$@"
