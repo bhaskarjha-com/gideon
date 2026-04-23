@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# tests/test_integration.sh — Full end-to-end integration test
+#
+# Simulates a complete gideon setup with 2 profiles in an isolated temp HOME.
+# Does NOT require network access (skips SSH connectivity tests).
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
+source_gideon_libs
+
+setup_test_home
+detect_os
+
+# --- Integration tests ---
+
+# Simulate a full 2-profile setup
+setup_two_profiles() {
+    GIDEON_DRY_RUN=0
+    PROFILE_LABELS=("global" "pro")
+    PROFILE_NAMES=("Test Global" "Test Pro")
+    PROFILE_EMAILS=("global@test.com" "pro@test.com")
+    PROFILE_DIRS=("" "$HOME/dev/pro")
+    PROFILE_COUNT=2
+    DEFAULT_PROFILE_INDEX=0
+
+    # Create the profile directory
+    mkdir -p "$HOME/dev/pro"
+
+    # Execute all setup steps
+    ensure_dirs 2>/dev/null
+    generate_ssh_key "global" "global@test.com" 2>/dev/null
+    generate_ssh_key "pro" "pro@test.com" 2>/dev/null
+    write_profile_gitconfig "pro" "Test Pro" "pro@test.com" 2>/dev/null
+    write_global_gitconfig 2>/dev/null
+    write_ssh_config 2>/dev/null
+    write_profiles_conf 2>/dev/null
+}
+
+test_integration_ssh_keys_created() {
+    setup_two_profiles
+
+    assert_file_exists "$HOME/.ssh/id_ed25519_global" "global private key" &&
+    assert_file_exists "$HOME/.ssh/id_ed25519_global.pub" "global public key" &&
+    assert_file_exists "$HOME/.ssh/id_ed25519_pro" "pro private key" &&
+    assert_file_exists "$HOME/.ssh/id_ed25519_pro.pub" "pro public key"
+}
+
+test_integration_gitconfig_created() {
+    assert_file_exists "$HOME/.gitconfig" "global gitconfig exists" &&
+    assert_file_contains "$HOME/.gitconfig" "name = Test Global" "has global name" &&
+    assert_file_contains "$HOME/.gitconfig" "email = global@test.com" "has global email"
+}
+
+test_integration_includeif_correct() {
+    local keyword
+    keyword=$(get_gitdir_keyword)
+
+    assert_file_contains "$HOME/.gitconfig" \
+        "[includeIf \"${keyword}${HOME}/dev/pro/\"]" \
+        "has includeIf for pro dir"
+}
+
+test_integration_profile_config_created() {
+    assert_file_exists "$GIDEON_PROFILES_DIR/pro.gitconfig" "pro profile exists" &&
+    assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "email = pro@test.com" "pro has email" &&
+    assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "sshCommand = ssh -i ~/.ssh/id_ed25519_pro" "pro has sshCommand"
+}
+
+test_integration_ssh_config_created() {
+    assert_file_exists "$HOME/.ssh/config" "ssh config exists" &&
+    assert_file_contains "$HOME/.ssh/config" "Host github-global" "has global host" &&
+    assert_file_contains "$HOME/.ssh/config" "Host github-pro" "has pro host" &&
+    assert_file_contains "$HOME/.ssh/config" "IdentitiesOnly yes" "has IdentitiesOnly"
+}
+
+test_integration_profiles_conf_created() {
+    assert_file_exists "$GIDEON_PROFILES_CONF" "profiles.conf exists" &&
+    assert_file_contains "$GIDEON_PROFILES_CONF" "global:global@test.com:" "global entry" &&
+    assert_file_contains "$GIDEON_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro" "pro entry"
+}
+
+test_integration_gitconfig_parseable() {
+    # Use git config --file to verify the generated config is valid
+    local result
+    result=$(git config --file "$HOME/.gitconfig" user.email 2>/dev/null || echo "PARSE_ERROR")
+    assert_equals "global@test.com" "$result" "git can parse global email"
+}
+
+test_integration_profile_gitconfig_parseable() {
+    local result
+    result=$(git config --file "$GIDEON_PROFILES_DIR/pro.gitconfig" user.email 2>/dev/null || echo "PARSE_ERROR")
+    assert_equals "pro@test.com" "$result" "git can parse profile email"
+}
+
+test_integration_idempotent_rerun() {
+    # Run setup again
+    PROFILE_LABELS=("global" "pro")
+    PROFILE_NAMES=("Test Global" "Test Pro")
+    PROFILE_EMAILS=("global@test.com" "pro@test.com")
+    PROFILE_DIRS=("" "$HOME/dev/pro")
+    PROFILE_COUNT=2
+    DEFAULT_PROFILE_INDEX=0
+
+    write_global_gitconfig 2>/dev/null
+    write_ssh_config 2>/dev/null
+
+    # Check no duplicates
+    local gitconfig_markers
+    gitconfig_markers=$(grep -c "\[gideon:managed:start\]" "$HOME/.gitconfig")
+    assert_equals "1" "$gitconfig_markers" "gitconfig has exactly 1 managed block" || return 1
+
+    local ssh_host_count
+    ssh_host_count=$(grep -c "Host github-pro" "$HOME/.ssh/config")
+    assert_equals "1" "$ssh_host_count" "ssh config has exactly 1 pro host block"
+}
+
+test_integration_backup_created() {
+    # Backups should have been created during the re-run
+    local backup_count
+    backup_count=$(find "$GIDEON_BACKUP_DIR" -name "*.bak" 2>/dev/null | wc -l)
+
+    if [[ "$backup_count" -ge 1 ]]; then
+        return 0
+    fi
+
+    printf '    FAIL: No backups found in %s\n' "$GIDEON_BACKUP_DIR"
+    return 1
+}
+
+# --- Run ---
+
+printf '\n%btest_integration.sh%b\n' "$T_BOLD" "$T_RESET"
+run_test "SSH keys created for both profiles" test_integration_ssh_keys_created
+run_test "global gitconfig created with defaults" test_integration_gitconfig_created
+run_test "includeIf has correct path" test_integration_includeif_correct
+run_test "profile gitconfig created" test_integration_profile_config_created
+run_test "SSH config has host aliases" test_integration_ssh_config_created
+run_test "profiles.conf registry created" test_integration_profiles_conf_created
+run_test "global gitconfig is parseable by git" test_integration_gitconfig_parseable
+run_test "profile gitconfig is parseable by git" test_integration_profile_gitconfig_parseable
+run_test "re-run is idempotent (no duplicates)" test_integration_idempotent_rerun
+run_test "backups are created during re-run" test_integration_backup_created
+print_results "Integration tests"
