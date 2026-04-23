@@ -86,10 +86,8 @@ normalize_path() {
         path="${path%/}"
     fi
 
-    # Collapse double slashes
-    while [[ "$path" == *"//"* ]]; do
-        path="${path//\/\//\/}"
-    done
+    # Collapse double slashes (tr -s avoids bash escaping ambiguity on Git Bash)
+    path=$(printf '%s' "$path" | tr -s '/')
 
     printf '%s' "$path"
 }
