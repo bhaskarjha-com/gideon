@@ -44,7 +44,8 @@ SYM_CROSS="✖"
 SYM_WARN="⚠"
 SYM_INFO="ℹ"
 SYM_ARROW="→"
-SYM_BULLET="•"   # shellcheck disable=SC2034  # Available for future subcommands
+# shellcheck disable=SC2034  # Available for future subcommands
+SYM_BULLET="•"
 
 # ------------------------------------------------------------------------------
 # Output functions
