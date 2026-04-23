@@ -21,6 +21,7 @@ generate_ssh_key() {
 
     # Warn if ~/.ssh is on a shared mount
     if is_shared_mount "$HOME/.ssh" 2>/dev/null; then
+        # shellcheck disable=SC2088  # Tilde is in a display string, not a path
         print_warning "~/.ssh appears to be on a shared folder (VirtualBox/VMware)."
         print_warning "SSH keys require strict permissions (600) which shared folders cannot enforce."
         print_info "Consider storing keys on the native filesystem instead."

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034  # Test state vars are consumed by sourced library functions
 # tests/test_gitconfig.sh — Tests for lib/gitconfig.sh
 set -euo pipefail
 

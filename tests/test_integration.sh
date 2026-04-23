@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034  # Test state vars are consumed by sourced library functions
 # tests/test_integration.sh — Full end-to-end integration test
 #
 # Simulates a complete gideon setup with 2 profiles in an isolated temp HOME.

@@ -70,7 +70,8 @@ detect_os() {
 normalize_path() {
     local path="$1"
 
-    # Expand tilde
+    # Expand tilde (SC2088: intentional literal comparison, not expansion)
+    # shellcheck disable=SC2088
     if [[ "$path" == "~/"* ]]; then
         path="$HOME/${path:2}"
     elif [[ "$path" == "~" ]]; then

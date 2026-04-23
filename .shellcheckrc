@@ -1,8 +1,14 @@
-# Follow sourced files relative to this directory
-source-path=lib
+# ShellCheck configuration for gideon
+# https://www.shellcheck.net/wiki/
 
 # Target shell dialect
 shell=bash
 
-# Disable SC2034 (unused variables) for lib files that export variables
-# These are used by sourcing scripts
+# Follow sourced files relative to project root
+source-path=lib
+source-path=tests
+
+# SC1091: Not following sourced files (ShellCheck can't resolve dynamic paths)
+# All test files source helpers.sh via $(dirname "${BASH_SOURCE[0]}")/helpers.sh
+# which ShellCheck cannot follow statically.
+disable=SC1091

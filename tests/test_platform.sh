@@ -21,6 +21,7 @@ test_detect_os_returns_value() {
 
 test_normalize_path_tilde() {
     local result
+    # shellcheck disable=SC2088  # Intentional: testing that normalize_path handles literal tilde
     result=$(normalize_path "~/foo/bar")
     assert_equals "$HOME/foo/bar" "$result" "tilde expansion"
 }

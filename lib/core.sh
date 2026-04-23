@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034  # All variables here are used by modules that source this file
 # lib/core.sh — Constants, version, and global state for gideon
 #
 # This file is sourced by the main gideon script.

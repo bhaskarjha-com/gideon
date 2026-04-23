@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034  # Test state vars are consumed by sourced library functions
 # tests/test_ssh.sh — Tests for lib/ssh.sh
 set -euo pipefail
 

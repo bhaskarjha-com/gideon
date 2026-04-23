@@ -22,7 +22,7 @@ if [[ -t 1 ]]; then
     T_BOLD='\033[1m'
     T_RESET='\033[0m'
 else
-    T_RED='' T_GREEN='' T_DIM='' T_BOLD='' T_RESET=''
+    T_RED='' T_GREEN='' T_DIM='' T_BOLD='' T_RESET=''  # shellcheck disable=SC2034
 fi
 
 # ------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ fi
 run_test() {
     local description="$1"
     local func="$2"
-    CURRENT_TEST="$description"
+    CURRENT_TEST="$description"  # shellcheck disable=SC2034
     TESTS_RUN=$((TESTS_RUN + 1))
 
     # Run the test, capture exit code
