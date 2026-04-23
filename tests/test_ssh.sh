@@ -40,6 +40,11 @@ test_generate_key_creates_files() {
 }
 
 test_generate_key_permissions() {
+    # Windows/NTFS doesn't support Unix permissions — chmod 600 is a no-op
+    if [[ "$GIDEON_OS" == "gitbash" ]]; then
+        return 0  # Skip: permissions not enforceable on Windows
+    fi
+
     # Key should already exist from previous test
     local key_path="$HOME/.ssh/id_ed25519_testkey"
 
