@@ -1,0 +1,17 @@
+# Enforce LF line endings for all text files (cross-platform safety)
+* text=auto
+
+# Shell scripts — always LF, even on Windows
+*.sh text eol=lf
+gideon text eol=lf
+
+# Documentation
+*.md text eol=lf
+
+# Config files
+*.yml text eol=lf
+*.yaml text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.shellcheckrc text eol=lf
+LICENSE text eol=lf

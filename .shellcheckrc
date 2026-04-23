@@ -1,0 +1,8 @@
+# Follow sourced files relative to this directory
+source-path=lib
+
+# Target shell dialect
+shell=bash
+
+# Disable SC2034 (unused variables) for lib files that export variables
+# These are used by sourcing scripts

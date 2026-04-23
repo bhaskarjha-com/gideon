@@ -1,0 +1,20 @@
+# Backups created during testing
+*.bak
+*.tmp
+
+# macOS
+.DS_Store
+
+# Temporary test directories
+tmp/
+test_tmp/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# One-time scripts
+commit_plan.sh
