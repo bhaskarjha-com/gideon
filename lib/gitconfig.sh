@@ -42,6 +42,28 @@ ${GIDEON_MANAGED_START}
     defaultBranch = main
 EOF
 
+    # Add safe.directory for each non-default profile (solves VirtualBox/WSL dubious ownership)
+    local has_safe=0
+    local i
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
+            continue
+        fi
+
+        local dir="${PROFILE_DIRS[$i]}"
+        if [[ -n "$dir" ]]; then
+            if [[ "$dir" != */ ]]; then
+                dir="${dir}/"
+            fi
+            
+            if [[ "$has_safe" -eq 0 ]]; then
+                printf '\n[safe]\n'
+                has_safe=1
+            fi
+            printf '    directory = %s*\n' "$dir"
+        fi
+    done
+
     # Add includeIf for each non-default profile
     local i
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do

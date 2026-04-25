@@ -58,6 +58,22 @@ test_global_block_has_includeif() {
     assert_contains "$block" "path = ${GIDEON_PROFILES_DIR}/pro.gitconfig" "has profile path"
 }
 
+test_global_block_has_safe_directories() {
+    PROFILE_LABELS=("global" "pro" "work")
+    PROFILE_NAMES=("Test" "Pro" "Work")
+    PROFILE_EMAILS=("g@t.com" "p@t.com" "w@t.com")
+    PROFILE_DIRS=("" "/dev/pro" "/dev/work")
+    PROFILE_COUNT=3
+    DEFAULT_PROFILE_INDEX=0
+
+    local block
+    block=$(build_global_gitconfig_block)
+
+    assert_contains "$block" "[safe]" "has safe block header" &&
+    assert_contains "$block" "directory = /dev/pro/*" "has safe directory for pro" &&
+    assert_contains "$block" "directory = /dev/work/*" "has safe directory for work"
+}
+
 test_global_block_has_trailing_slash() {
     PROFILE_LABELS=("global" "work")
     PROFILE_NAMES=("Test" "Work")
@@ -182,6 +198,7 @@ printf '\n%btest_gitconfig.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "global block contains default user" test_global_block_has_user
 run_test "global block contains sshCommand" test_global_block_has_ssh_command
 run_test "global block has includeIf for profiles" test_global_block_has_includeif
+run_test "global block has safe directories" test_global_block_has_safe_directories
 run_test "includeIf paths have trailing slash" test_global_block_has_trailing_slash
 run_test "global block has managed markers" test_global_block_has_managed_markers
 run_test "profile gitconfig has correct content" test_profile_gitconfig_content
