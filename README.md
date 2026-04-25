@@ -89,15 +89,19 @@ In a single interactive session, `gideon`:
 ~/.config/gideon/hooks/pre-commit          # Identity guard hook (optional)
 ```
 
-### The Dual SSH Strategy
+### The Magical Clone (How it Works)
 
-gideon solves the **clone chicken-and-egg problem** that no other tool addresses:
+gideon provides a completely frictionless, alias-free experience. 
 
-- **Day-to-day** (push, pull, commit): `core.sshCommand` in profile gitconfigs automatically uses the right SSH key based on directory
-- **First-time cloning**: SSH config host aliases let you specify the identity:
-  ```bash
-  git clone git@github-pro:username/repo.git ~/dev/pro/repo
-  ```
+Other tools require you to memorize custom SSH host aliases (like `git clone git@github-pro:username/repo.git`). With gideon, you don't.
+
+1. **`cd` into your profile directory** (e.g., `cd ~/dev/pro`)
+2. **Clone normally**: `git clone git@github.com:username/repo.git`
+
+**How is this possible?**
+Git's `includeIf` conditional rules instantly activate the moment a new `.git` directory is created. During the clone process, Git initializes the folder locally, immediately triggers gideon's `includeIf` rule, reads the `core.sshCommand` for that profile, and dynamically injects the correct SSH key mid-flight before the connection to GitHub is ever made!
+
+*Note: Gideon still generates `~/.ssh/config` host aliases (like `github-pro`) purely so you can easily test your keys with `ssh -T git@github-pro`.*
 
 ### Managed Blocks (Idempotent Updates)
 

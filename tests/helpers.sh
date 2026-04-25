@@ -217,6 +217,7 @@ setup_test_home() {
     ORIGINAL_HOME="$HOME"
     TEST_HOME=$(mktemp -d "${TMPDIR:-/tmp}/gideon-test.XXXXXX")
     export HOME="$TEST_HOME"
+    unset XDG_CONFIG_HOME
     mkdir -p "$HOME/.ssh"
     mkdir -p "$HOME/.config"
 }

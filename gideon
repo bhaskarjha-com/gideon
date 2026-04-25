@@ -468,10 +468,9 @@ cmd_setup() {
     done
     printf >&2 '\n'
 
-    printf >&2 '  %b3.%b Clone repos using the profile host alias:\n' "$BOLD" "$RESET"
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        printf >&2 '     git clone git@github-%s:username/repo.git\n' "${PROFILE_LABELS[$i]}"
-    done
+    printf >&2 '  %b3.%b Magical Clone! Just cd into your profile directory and clone normally:\n' "$BOLD" "$RESET"
+    printf >&2 '     cd /path/to/profile/dir\n'
+    printf >&2 '     git clone git@github.com:username/repo.git\n'
     printf >&2 '\n'
 
     printf >&2 '  %b4.%b Verify your setup:\n' "$BOLD" "$RESET"

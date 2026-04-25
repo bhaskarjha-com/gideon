@@ -6,7 +6,7 @@
 
 Developers with multiple Git identities face a painful, repetitive setup on every new machine:
 1. Generate SSH keys per identity
-2. Configure `~/.ssh/config` with host aliases
+2. Configure `~/.ssh/config` with host aliases (for connectivity testing)
 3. Write `~/.gitconfig` with `includeIf` conditional includes
 4. Create per-profile gitconfig files
 5. Register public keys on GitHub/GitLab
@@ -25,14 +25,16 @@ One mistake → commits under the wrong email → permanent embarrassment in git
 5. **Cross-platform** — Linux, macOS (bash 3.2), Windows (Git Bash), WSL
 6. **Transparent** — Dry-run mode shows exactly what will change
 
-## Key Design Decision: Dual SSH Strategy
+## Key Design Decision: The Magical Clone
 
-The `includeIf gitdir:` only activates AFTER a repo exists. During `git clone`, the target directory doesn't exist yet. So:
+Gideon provides a completely frictionless, alias-free clone experience.
 
-- **Day-to-day** (push/pull): `core.sshCommand` in profile gitconfigs
-- **First clone**: SSH config host aliases (`github-pro`, `github-work`)
+The `includeIf gitdir:` dynamically injects `core.sshCommand` *during* the clone process, intercepting the fetch and applying the correct SSH key mid-flight.
 
-No other tool solves this.
+- **Magical clone**: standard `git clone` works seamlessly (e.g. `git clone git@github.com...`)
+- **Day-to-day**: `core.sshCommand` via `includeIf`
+
+No other tool natively embraces this capability.
 
 ## Key Design Decision: Bash 3.2
 

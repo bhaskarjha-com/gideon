@@ -115,6 +115,8 @@ ssh -T git@github-work
 ssh -vT git@github-pro
 ```
 
+> **Note:** These host aliases (`github-pro`, `github-work`) are generated **purely for testing connectivity**. You do NOT need to use them when cloning repositories. You can always clone normally using `git clone git@github.com:...` as long as you are inside your profile's configured directory!
+
 ## Git Config Issues
 
 ### includeIf Not Working

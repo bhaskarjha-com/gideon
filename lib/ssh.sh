@@ -203,12 +203,9 @@ display_public_keys() {
         fi
     done
 
-    print_section "Clone Examples"
-    local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        local label="${PROFILE_LABELS[$i]}"
-        printf >&2 '  %b%s%b profile: git clone git@github-%s:username/repo.git\n' \
-            "$BOLD" "$label" "$RESET" "$label"
-    done
-    printf >&2 '\n'
+    print_section "The Magical Clone"
+    printf >&2 "  %bYou no longer need special host aliases to clone!%b\n\n" "$BOLD" "$RESET"
+    printf >&2 "  Simply %bcd%b into your profile's directory and run:\n" "$CYAN" "$RESET"
+    printf >&2 "    git clone git@github.com:username/repo.git\n\n"
+    printf >&2 "  %bGideon will automatically intercept and use the correct SSH key!%b\n" "$BOLD" "$RESET"
 }
