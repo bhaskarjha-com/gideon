@@ -140,6 +140,10 @@ validate_no_overlap() {
 
     local existing
     for existing in "${existing_paths[@]}"; do
+        if [[ -z "$existing" ]]; then
+            continue
+        fi
+
         existing=$(normalize_path "$existing")
         local existing_with_slash="${existing}/"
 

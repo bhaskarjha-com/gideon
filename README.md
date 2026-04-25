@@ -149,7 +149,7 @@ for f in tests/test_*.sh; do bash "$f"; done
 bash tests/test_validate.sh
 ```
 
-72 tests covering: platform detection, input validation, SSH key generation, git config generation, backup/restore, teardown logic, and full integration.
+73 tests covering: platform detection, input validation, SSH key generation, git config generation, backup/restore, teardown logic, and full integration.
 
 ## FAQ
 
@@ -199,7 +199,7 @@ gideon/
 │   ├── guard.sh         # Pre-commit identity hook
 │   ├── verify.sh        # Post-setup verification
 │   └── teardown.sh      # Safely remove all configurations
-├── tests/               # 72 tests, zero dependencies
+├── tests/               # 73 tests, zero dependencies
 ├── docs/                # Architecture & troubleshooting
 └── .github/workflows/   # CI: ShellCheck + tests on 3 OSes
 ```

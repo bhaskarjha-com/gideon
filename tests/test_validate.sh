@@ -116,6 +116,11 @@ test_no_overlap_empty_existing() {
     assert_exit_code 0 validate_no_overlap "/dev/work"
 }
 
+test_no_overlap_empty_string_in_list() {
+    # Existing list has an empty string (like the default profile)
+    assert_exit_code 0 validate_no_overlap "/media/sf_dev/pro" "" "/some/other/path"
+}
+
 # --- Run ---
 
 printf '\n%btest_validate.sh%b\n' "$T_BOLD" "$T_RESET"
@@ -147,5 +152,6 @@ run_test "overlap: same path" test_overlap_same_path
 run_test "no overlap: siblings" test_no_overlap_siblings
 run_test "no overlap: different roots" test_no_overlap_different_roots
 run_test "no overlap: empty existing list" test_no_overlap_empty_existing
+run_test "no overlap: empty string in list" test_no_overlap_empty_string_in_list
 
 print_results "Validation tests"
