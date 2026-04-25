@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2034  # Variables used by sourcing script
+# lib/teardown.sh — Safely remove all Gideon configurations
+#
+# Removes managed blocks from ~/.gitconfig and ~/.ssh/config,
+# uninstalls the guard hook, and deletes the ~/.config/gideon directory.
+# Leaves SSH keys intact but lists them for manual deletion.
+# Bash 3.2 compatible.
+
+# ------------------------------------------------------------------------------
+# teardown_gitconfig — Remove managed block from ~/.gitconfig
+#
+# Usage: teardown_gitconfig
+# ------------------------------------------------------------------------------
+teardown_gitconfig() {
+    local gitconfig="$HOME/.gitconfig"
+
+    if [[ ! -f "$gitconfig" ]]; then
+        print_info "No ~/.gitconfig found, skipping."
+        return 0
+    fi
+
+    if ! grep -q "\[gideon:managed:start\]" "$gitconfig" 2>/dev/null; then
+        print_info "No gideon managed block found in ~/.gitconfig, skipping."
+        return 0
+    fi
+
+    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+        print_info "[DRY RUN] Would remove managed block from: $gitconfig"
+        return 0
+    fi
+
+    backup_file "$gitconfig"
+
+    local tmp_file
+    tmp_file=$(mktemp "${gitconfig}.tmp.XXXXXX")
+
+    local in_managed=0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == *"[gideon:managed:start]"* ]]; then
+            in_managed=1
+            continue
+        fi
+        if [[ "$line" == *"[gideon:managed:end]"* ]]; then
+            in_managed=0
+            continue
+        fi
+        if [[ "$in_managed" -eq 0 ]]; then
+            printf '%s\n' "$line" >> "$tmp_file"
+        fi
+    done < "$gitconfig"
+
+    # If the resulting file is empty or only whitespace, delete it
+    if ! grep -q '[^[:space:]]' "$tmp_file" 2>/dev/null; then
+        rm -f "$tmp_file"
+        rm -f "$gitconfig"
+        print_success "Removed ~/.gitconfig (it was empty after cleanup)"
+    else
+        # Remove multiple trailing blank lines using awk for portability
+        awk -v RS='\n' -v ORS='\n' '
+            /^[[:space:]]*$/ { blank++; next }
+            { for(i=0; i<blank; i++) print ""; blank=0; print $0 }
+        ' < "$tmp_file" > "${tmp_file}.clean"
+        mv "${tmp_file}.clean" "$gitconfig"
+        rm -f "$tmp_file"
+        print_success "Removed managed block from: $gitconfig"
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# teardown_sshconfig — Remove managed host blocks from ~/.ssh/config
+#
+# Usage: teardown_sshconfig
+# ------------------------------------------------------------------------------
+teardown_sshconfig() {
+    local ssh_config="$HOME/.ssh/config"
+
+    if [[ ! -f "$ssh_config" ]]; then
+        print_info "No ~/.ssh/config found, skipping."
+        return 0
+    fi
+
+    if ! grep -q "\[gideon:managed:start\]" "$ssh_config" 2>/dev/null; then
+        print_info "No gideon managed blocks found in ~/.ssh/config, skipping."
+        return 0
+    fi
+
+    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+        print_info "[DRY RUN] Would remove managed blocks from: $ssh_config"
+        return 0
+    fi
+
+    backup_file "$ssh_config"
+
+    local tmp_file
+    tmp_file=$(mktemp "${ssh_config}.tmp.XXXXXX")
+
+    local in_managed_block=0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == *"[gideon:managed:start]"* ]]; then
+            in_managed_block=1
+            continue
+        fi
+        if [[ "$line" == *"[gideon:managed:end]"* ]]; then
+            in_managed_block=0
+            continue
+        fi
+        if [[ "$in_managed_block" -eq 0 ]]; then
+            printf '%s\n' "$line" >> "$tmp_file"
+        fi
+    done < "$ssh_config"
+
+    # If the resulting file is empty or only whitespace, delete it
+    if ! grep -q '[^[:space:]]' "$tmp_file" 2>/dev/null; then
+        rm -f "$tmp_file"
+        rm -f "$ssh_config"
+        print_success "Removed ~/.ssh/config (it was empty after cleanup)"
+    else
+        awk -v RS='\n' -v ORS='\n' '
+            /^[[:space:]]*$/ { blank++; next }
+            { for(i=0; i<blank; i++) print ""; blank=0; print $0 }
+        ' < "$tmp_file" > "${tmp_file}.clean"
+        mv "${tmp_file}.clean" "$ssh_config"
+        rm -f "$tmp_file"
+        print_success "Removed managed blocks from: $ssh_config"
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# teardown_config_dir — Remove ~/.config/gideon
+#
+# Usage: teardown_config_dir
+# ------------------------------------------------------------------------------
+teardown_config_dir() {
+    if [[ ! -d "$GIDEON_CONFIG_DIR" ]]; then
+        print_info "Directory $GIDEON_CONFIG_DIR not found, skipping."
+        return 0
+    fi
+
+    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+        print_info "[DRY RUN] Would completely remove: $GIDEON_CONFIG_DIR"
+        return 0
+    fi
+
+    rm -rf "$GIDEON_CONFIG_DIR"
+    print_success "Removed configuration directory: $GIDEON_CONFIG_DIR"
+}
+
+# ------------------------------------------------------------------------------
+# list_orphaned_keys — Show SSH keys generated by gideon
+#
+# Usage: list_orphaned_keys
+# ------------------------------------------------------------------------------
+list_orphaned_keys() {
+    local keys=()
+    local f
+    
+    # Check for keys generated by gideon pattern (id_ed25519_<label>)
+    # Ignore the standard id_ed25519 key to avoid false positives
+    if [[ -d "$HOME/.ssh" ]]; then
+        # shellcheck disable=SC2045  # Iterating safely since we control names
+        for f in "$HOME/.ssh"/id_ed25519_*; do
+            if [[ -f "$f" ]] && [[ ! "$f" == *.pub ]] && [[ ! "$f" == *.old.* ]] && [[ "$f" != "$HOME/.ssh/id_ed25519" ]]; then
+                keys+=("$f")
+            fi
+        done
+    fi
+
+    if [[ ${#keys[@]} -gt 0 ]]; then
+        print_section "Action Required: SSH Keys"
+        print_warning "Gideon has left your SSH keys intact to prevent accidental lockouts."
+        print_info "If you no longer need them, remove them from GitHub/GitLab and delete them locally:"
+        
+        local key
+        for key in "${keys[@]}"; do
+            printf >&2 "    rm %s %s.pub\n" "$key" "$key"
+        done
+        printf >&2 "\n"
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# teardown_all — Main coordinator for teardown
+#
+# Usage: teardown_all
+# ------------------------------------------------------------------------------
+teardown_all() {
+    print_section "Teardown Process"
+    
+    # 1. Uninstall guard hook (relies on config dir existing)
+    uninstall_guard
+    
+    # 2. Clean gitconfig
+    teardown_gitconfig
+    
+    # 3. Clean ssh config
+    teardown_sshconfig
+    
+    # 4. Remove config directory (must be last state modifier)
+    teardown_config_dir
+    
+    # 5. Provide final advice on keys
+    list_orphaned_keys
+    
+    if [[ "$GIDEON_DRY_RUN" -eq 0 ]]; then
+        print_success "Gideon teardown complete."
+    fi
+}

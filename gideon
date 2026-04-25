@@ -75,6 +75,7 @@ gideon_source "$GIDEON_SCRIPT_DIR/lib/ssh.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/gitconfig.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/guard.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/verify.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/teardown.sh"
 
 # ------------------------------------------------------------------------------
 # Signal trap — clean exit on Ctrl+C
@@ -97,6 +98,7 @@ ${BOLD}USAGE${RESET}
     gideon setup [--dry-run]        Interactive setup wizard
     gideon status                   Show current identity configuration
     gideon verify                   Test SSH keys and git config
+    gideon teardown [--force]       Remove all gideon configurations
     gideon guard --install          Install pre-commit identity guard hook
     gideon guard --uninstall        Remove the guard hook
     gideon --help, -h               Show this help
@@ -222,6 +224,35 @@ cmd_verify() {
     fi
 
     verify_all
+}
+
+# ------------------------------------------------------------------------------
+# cmd_teardown — Remove all gideon configurations
+# ------------------------------------------------------------------------------
+cmd_teardown() {
+    detect_os
+    print_header
+
+    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+        print_info "DRY RUN MODE — no files will be written/deleted"
+        printf >&2 '\n'
+    fi
+
+    local force="${1:-0}"
+
+    if [[ "$force" -eq 0 ]] && [[ "$GIDEON_DRY_RUN" -eq 0 ]]; then
+        print_warning "This will remove all Gideon configurations:"
+        printf >&2 "  - Remove managed blocks from ~/.gitconfig\n"
+        printf >&2 "  - Remove managed blocks from ~/.ssh/config\n"
+        printf >&2 "  - Uninstall the commit guard hook\n"
+        printf >&2 "  - Delete the ~/.config/gideon directory\n\n"
+        if ! confirm "Are you sure you want to proceed?" "n"; then
+            print_info "Teardown cancelled."
+            return 0
+        fi
+    fi
+
+    teardown_all
 }
 
 # ------------------------------------------------------------------------------
@@ -466,6 +497,7 @@ main() {
         printf >&2 'Usage: gideon setup [--dry-run]    Start the setup wizard\n'
         printf >&2 '       gideon status               Show current identity\n'
         printf >&2 '       gideon verify               Test SSH and git config\n'
+        printf >&2 '       gideon teardown [--force]   Remove all configurations\n'
         printf >&2 '       gideon guard --install       Install commit guard hook\n'
         printf >&2 '       gideon --help                Full help\n\n'
         return 0
@@ -497,6 +529,22 @@ main() {
             ;;
         verify)
             cmd_verify
+            ;;
+        teardown)
+            local force=0
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --dry-run) GIDEON_DRY_RUN=1 ;;
+                    --force|-f) force=1 ;;
+                    *)
+                        print_error "Unknown flag: $1"
+                        printf >&2 'Usage: gideon teardown [--dry-run] [--force]\n'
+                        return 1
+                        ;;
+                esac
+                shift
+            done
+            cmd_teardown "$force"
             ;;
         guard)
             if [[ $# -eq 0 ]]; then

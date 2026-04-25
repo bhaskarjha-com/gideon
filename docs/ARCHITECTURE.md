@@ -16,6 +16,7 @@ graph TD
     MAIN --> GIT[lib/gitconfig.sh]
     MAIN --> GRD[lib/guard.sh]
     MAIN --> VER[lib/verify.sh]
+    MAIN --> TDN[lib/teardown.sh]
 
     SSH --> CORE
     SSH --> PLAT
@@ -39,6 +40,11 @@ graph TD
     BKP --> UI
 
     VAL --> PLAT
+
+    TDN --> CORE
+    TDN --> UI
+    TDN --> BKP
+    TDN --> GRD
 
     style MAIN fill:#2563eb,color:#fff
     style CORE fill:#7c3aed,color:#fff

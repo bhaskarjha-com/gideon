@@ -69,6 +69,7 @@ In a single interactive session, `gideon`:
 | `./gideon setup --dry-run` | Preview what setup would do (no writes) |
 | `./gideon status` | Show current identity and all profiles |
 | `./gideon verify` | Test SSH keys, git config, and connectivity |
+| `./gideon teardown` | Remove all gideon configurations safely |
 | `./gideon guard --install` | Install pre-commit identity mismatch guard |
 | `./gideon guard --uninstall` | Remove the guard hook |
 | `./gideon --help` | Full help text |
@@ -148,7 +149,7 @@ for f in tests/test_*.sh; do bash "$f"; done
 bash tests/test_validate.sh
 ```
 
-67 tests covering: platform detection, input validation, SSH key generation, git config generation, backup/restore, and full integration.
+72 tests covering: platform detection, input validation, SSH key generation, git config generation, backup/restore, teardown logic, and full integration.
 
 ## FAQ
 
@@ -196,8 +197,9 @@ gideon/
 │   ├── ssh.sh           # SSH key & config management
 │   ├── gitconfig.sh     # Git config generation
 │   ├── guard.sh         # Pre-commit identity hook
-│   └── verify.sh        # Post-setup verification
-├── tests/               # 67 tests, zero dependencies
+│   ├── verify.sh        # Post-setup verification
+│   └── teardown.sh      # Safely remove all configurations
+├── tests/               # 72 tests, zero dependencies
 ├── docs/                # Architecture & troubleshooting
 └── .github/workflows/   # CI: ShellCheck + tests on 3 OSes
 ```

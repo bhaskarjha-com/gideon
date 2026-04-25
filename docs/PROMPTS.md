@@ -132,7 +132,7 @@ Read these files to understand the testing approach:
 - /media/sf_dev/pro/gideon/tests/test_validate.sh (example of well-written tests)
 - /media/sf_dev/pro/gideon/tests/test_integration.sh (example of end-to-end tests)
 
-Current coverage: 67 tests across 6 test files. I want to improve coverage.
+Current coverage: 72 tests across 7 test files. I want to improve coverage.
 
 Identify gaps by:
 1. Reading each lib/*.sh file and listing functions without corresponding tests
