@@ -30,7 +30,19 @@ Gideon is a bootstrapper, not a switcher. It does not exist to manage identities
 
 ---
 
-## 2. The Architecture
+## 2. The Market Void: Why We Built This
+
+It is astonishing that a tool like Gideon did not exist until now. However, analyzing the history of Git and developer habits reveals exactly why this void occurred:
+
+### The "Host Alias" Legacy Bias
+For over a decade, the *only* way to manage multiple GitHub accounts on one machine was to create fake Host aliases in `~/.ssh/config` (e.g., `Host github-work`). Millions of developers were trained to use this sub-optimal workflow. When Git finally introduced `includeIf` (in v2.13) and `core.sshCommand` (in v2.10), the community was already anchored to the old ways. Tool builders created utilities to patch the old workflow, rather than architecting a modern `includeIf` interceptor.
+
+### The Language Trap
+Writing an interactive, idempotent configuration bootstrapper is highly complex. When developers attempt to automate this, they instinctively reach for modern languages like Go, Node.js, or Rust. However, introducing a compiled language or a package manager completely defeats the purpose of a "bootstrapper" script. You end up having to install dependencies just to configure your SSH keys. Gideon is unique because it achieved compiled-CLI-level UX purely using POSIX Bash 3.2.
+
+---
+
+## 3. The Architecture
 
 The entire magic of Gideon relies on connecting standard SSH mechanics with advanced Git conditional configurations.
 
@@ -81,7 +93,7 @@ Because `includeIf` triggers as soon as the local `.git` folder is created, the 
 
 ---
 
-## 3. Non-Goals
+## 4. Non-Goals
 
 To maintain its extreme focus and reliability, Gideon explicitly rejects the following features:
 - **Credential Management:** It does not handle passwords, personal access tokens (PATs), or OAuth flows.

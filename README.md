@@ -21,11 +21,13 @@
 
 ---
 
-## ⚡ Why Gideon?
+## ⚡ Why We Built Gideon
 
-You work with multiple Git identities — personal, work, freelance, and open-source. Every new machine, VM, or container requires you to manually generate SSH keys, carefully edit `~/.gitconfig`, configure `~/.ssh/config`, upload keys to your provider, and hope you didn't make a typo that haunts your commit history forever.
+We noticed a gap in the ecosystem. As engineers, we often work with multiple Git identities — personal, work, freelance, and open-source. Setting up a new machine, VM, or container meant spending an hour reading tutorials to manually generate SSH keys, edit `~/.gitconfig`, configure `~/.ssh/config`, and upload keys to GitHub. 
 
-**Gideon obliterates this workflow in 60 seconds.**
+There are many excellent tools to help *switch* identities, but none of them actually bootstrapped the infrastructure from scratch without requiring a Go or Node.js package manager.
+
+**We built Gideon to obliterate this workflow in 60 seconds.**
 
 Gideon is a pure-Bash CLI tool that bootstraps your entire Git identity infrastructure from scratch. It asks you a few questions, generates the secure Ed25519 SSH keys, wires up your configurations, and silently enforces the correct identity based on the directory you are working in.
 
@@ -99,17 +101,19 @@ $ git commit -m "fix critical auth bug"
 
 ---
 
-## 💎 The Premium Engineering Promise
+## 🌍 How Gideon Fits into the Ecosystem
 
-| Feature | gitego | gguser | git-profile | karn | **gideon** |
-|---------|--------|--------|-------------|------|-----------|
-| SSH key generation | ❌ | ❌ | ❌ | ❌ | ✅ |
-| SSH config creation | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Git config with `includeIf` | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Pre-commit identity guard | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **Zero dependencies** | ❌ (Go) | ❌ (Node) | ❌ (Rust) | ❌ (Go) | ✅ (bash) |
-| Cross-platform (WSL/VMs) | ✅ | ✅ | ⚠️ | ✅ | ✅ |
-| Safe Idempotent Execution | ❌ | ❌ | ❌ | ❌ | ✅ |
+Gideon's architecture was specifically designed to handle the entire bootstrapping pipeline without dependencies. While there are many fantastic tools that help switch identities, Gideon is unique in its ability to provision the entire SSH infrastructure from an empty machine.
+
+| Feature | `gitego` (Go) | `gguser` (Node) | `git-profile` (Rust/JS) | `karn` (Go) | **gideon (Bash)** |
+|---------|:---:|:---:|:---:|:---:|:---:|
+| **Identity Switching** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Directory-Based Auto Switch** | ✅ | ✅ | ❌ | ✅ | ✅ |
+| **SSH Key Generation** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **SSH Config Orchestration** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Pre-Commit Identity Guard** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Absolute Zero Dependencies** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Safe Idempotent Execution** | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 - **Absolute Zero Dependencies:** Written in pure Bash 3.2. No Go, Node, Rust, or Homebrew required.
 - **Strictly Idempotent:** Safe to run multiple times. Gideon marks its config sections with managed blocks and surgically edits them using stateful filters. It never corrupts your custom configurations.
