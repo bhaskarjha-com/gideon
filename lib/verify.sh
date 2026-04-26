@@ -131,17 +131,21 @@ verify_ssh_connectivity() {
 
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         local label="${PROFILE_LABELS[$i]}"
-        local host="github-${label}"
+        local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
+        
+        local prefix
+        prefix=$(printf '%s' "$provider" | cut -d'.' -f1)
+        local host="${prefix}-${label}"
 
         printf >&2 '  Testing SSH: %s ... ' "$host"
 
         local output
         output=$(ssh -T -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "git@${host}" 2>&1 || true)
 
-        if printf '%s' "$output" | grep -qi "successfully authenticated"; then
+        if printf '%s' "$output" | grep -qi "successfully authenticated\|logged in as\|welcome to"; then
             printf >&2 '%b%s authenticated%b\n' "$GREEN" "$SYM_CHECK" "$RESET"
         elif printf '%s' "$output" | grep -qi "permission denied"; then
-            printf >&2 '%b%s key not added to GitHub%b\n' "$YELLOW" "$SYM_WARN" "$RESET"
+            printf >&2 '%b%s key not added to %s%b\n' "$YELLOW" "$SYM_WARN" "$provider" "$RESET"
             issues=$((issues + 1))
         elif printf '%s' "$output" | grep -qi "could not resolve\|connection refused\|timed out"; then
             printf >&2 '%b%s connection failed%b\n' "$RED" "$SYM_CROSS" "$RESET"

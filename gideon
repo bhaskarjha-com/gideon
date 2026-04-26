@@ -171,13 +171,13 @@ cmd_status() {
     # Show profile registry if it exists
     if [[ -f "$GIDEON_PROFILES_CONF" ]]; then
         print_section "Configured Profiles"
-        printf >&2 '  %-12s %-30s %s\n' "Label" "Email" "Directory"
-        printf >&2 '  %-12s %-30s %s\n' "-----" "-----" "---------"
+        printf >&2 '  %-12s %-30s %-15s %s\n' "Label" "Email" "Provider" "Directory"
+        printf >&2 '  %-12s %-30s %-15s %s\n' "-----" "-----" "--------" "---------"
 
-        while IFS=: read -r label email dir || [[ -n "$label" ]]; do
+        while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
             [[ "$label" == "#"* ]] && continue
             [[ -z "$label" ]] && continue
-            printf >&2 '  %-12s %-30s %s\n' "$label" "$email" "$dir"
+            printf >&2 '  %-12s %-30s %-15s %s\n' "$label" "$email" "${provider:-github.com}" "${dir:-[Manual Mode]}"
         done < "$GIDEON_PROFILES_CONF"
     else
         print_info "No profiles configured. Run 'gideon setup' to get started."
@@ -209,12 +209,13 @@ cmd_verify() {
 
     # Read profiles from registry
     PROFILE_COUNT=0
-    while IFS=: read -r label email dir || [[ -n "$label" ]]; do
+    while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
         [[ "$label" == "#"* ]] && continue
         [[ -z "$label" ]] && continue
         PROFILE_LABELS+=("$label")
         PROFILE_EMAILS+=("$email")
         PROFILE_DIRS+=("$dir")
+        PROFILE_PROVIDERS+=("${provider:-github.com}")
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
     done < "$GIDEON_PROFILES_CONF"
 
@@ -360,16 +361,50 @@ cmd_setup() {
                     fi
                 fi
             fi
+        fi
+
+        # Provider
+        printf >&2 '\n  %bGit Provider%b\n' "$BOLD" "$RESET"
+        printf >&2 '  1) GitHub (github.com)\n'
+        printf >&2 '  2) GitLab (gitlab.com)\n'
+        printf >&2 '  3) Bitbucket (bitbucket.org)\n'
+        printf >&2 '  4) Custom (Self-Hosted)\n'
+        ask "Select provider [1-4]" "1"
+        local provider_choice="$REPLY"
+        local provider="github.com"
+        case "$provider_choice" in
+            2) provider="gitlab.com" ;;
+            3) provider="bitbucket.org" ;;
+            4)
+                ask "Custom domain (e.g., git.company.com)" ""
+                provider="$REPLY"
+                while [[ -z "$provider" ]]; do
+                    ask_required "Custom domain"
+                    provider="$REPLY"
+                done
+                ;;
+        esac
 
         # Store profile
         PROFILE_LABELS+=("$label")
         PROFILE_NAMES+=("$name")
         PROFILE_EMAILS+=("$email")
         PROFILE_DIRS+=("$dir")
+        PROFILE_PROVIDERS+=("$provider")
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
 
         print_success "Profile '$label' configured: $name <$email>"
     done
+
+    # Global Passphrase
+    printf >&2 '\n'
+    print_section "SSH Security"
+    print_info "Gideon can generate password-less SSH keys (convenient) or"
+    print_info "protect them with a passphrase (secure). If you choose secure,"
+    print_info "ssh-keygen will interactively prompt you for a passphrase."
+    if confirm "Protect new SSH keys with a passphrase?" "n"; then
+        GIDEON_USE_PASSPHRASE=1
+    fi
 
     # --- Review plan ---
     print_section "Setup Plan"
@@ -380,15 +415,17 @@ cmd_setup() {
         local name="${PROFILE_NAMES[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
+        local provider="${PROFILE_PROVIDERS[$i]}"
 
         if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
             printf >&2 '  %b%s%b (default)\n' "$BOLD" "$label" "$RESET"
         else
-            printf >&2 '  %b%s%b → %s\n' "$BOLD" "$label" "$RESET" "$dir"
+            printf >&2 '  %b%s%b → %s\n' "$BOLD" "$label" "$RESET" "${dir:-[Manual Mode]}"
         fi
-        printf >&2 '    Name:  %s\n' "$name"
-        printf >&2 '    Email: %s\n' "$email"
-        printf >&2 '    Key:   ~/.ssh/id_ed25519_%s\n\n' "$label"
+        printf >&2 '    Name:     %s\n' "$name"
+        printf >&2 '    Email:    %s\n' "$email"
+        printf >&2 '    Provider: %s\n' "$provider"
+        printf >&2 '    Key:      ~/.ssh/id_ed25519_%s\n\n' "$label"
     done
 
     printf >&2 '  %bFiles:%b\n' "$BOLD" "$RESET"

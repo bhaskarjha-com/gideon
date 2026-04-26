@@ -27,7 +27,7 @@ test_ssh_host_block_custom_host() {
     local block
     block=$(build_ssh_host_block "work" "gitlab.com")
 
-    assert_contains "$block" "Host github-work" "has Host with label" &&
+    assert_contains "$block" "Host gitlab-work" "has Host with label" &&
     assert_contains "$block" "HostName gitlab.com" "has custom HostName"
 }
 

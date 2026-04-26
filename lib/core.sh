@@ -45,6 +45,7 @@ PROFILE_LABELS=()
 PROFILE_NAMES=()
 PROFILE_EMAILS=()
 PROFILE_DIRS=()
+PROFILE_PROVIDERS=()
 PROFILE_COUNT=0
 DEFAULT_PROFILE_INDEX=0
 
@@ -54,6 +55,7 @@ DEFAULT_PROFILE_INDEX=0
 
 GIDEON_OS=""           # Set by detect_os(): linux, macos, wsl, gitbash, unknown
 GIDEON_DRY_RUN=0      # Set to 1 by --dry-run flag
+GIDEON_USE_PASSPHRASE=0 # Set to 1 to prompt for SSH passphrases
 GIDEON_SCRIPT_DIR="${GIDEON_SCRIPT_DIR:-}"   # Preserve value set by main script
 
 # ------------------------------------------------------------------------------

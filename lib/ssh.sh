@@ -73,7 +73,17 @@ generate_ssh_key() {
     # Generate the key
     print_step "Generating SSH key for '$label'..."
 
-    if ssh-keygen -t ed25519 -C "$email" -f "$key_path" -N "" -q; then
+    if [[ "${GIDEON_USE_PASSPHRASE:-0}" -eq 1 ]]; then
+        # Prompt user for passphrase interactively
+        ssh-keygen -t ed25519 -C "$email" -f "$key_path"
+        local status=$?
+    else
+        # Password-less key
+        ssh-keygen -t ed25519 -C "$email" -f "$key_path" -N "" -q
+        local status=$?
+    fi
+
+    if [[ "$status" -eq 0 ]]; then
         chmod 600 "$key_path"
         chmod 644 "${key_path}.pub"
         print_success "Created: $key_path"
@@ -93,10 +103,14 @@ generate_ssh_key() {
 build_ssh_host_block() {
     local label="$1"
     local hostname="${2:-github.com}"
+    
+    # Extract the main part of the domain (e.g., gitlab.com -> gitlab) for the alias prefix
+    local prefix
+    prefix=$(printf '%s' "$hostname" | cut -d'.' -f1)
 
     cat <<EOF
 ${GIDEON_MANAGED_START} ${label}
-Host github-${label}
+Host ${prefix}-${label}
     HostName ${hostname}
     User git
     IdentityFile ~/.ssh/id_ed25519_${label}
@@ -172,8 +186,9 @@ write_ssh_config() {
     local i
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         local label="${PROFILE_LABELS[$i]}"
+        local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
         printf '\n' >> "$ssh_config"
-        build_ssh_host_block "$label" >> "$ssh_config"
+        build_ssh_host_block "$label" "$provider" >> "$ssh_config"
     done
 
     # Ensure correct permissions

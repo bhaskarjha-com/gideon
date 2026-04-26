@@ -70,7 +70,7 @@ fi
 expected_email=""
 expected_label=""
 
-while IFS=: read -r label email dir || [[ -n "$label" ]]; do
+while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
     # Skip comments and empty lines
     [[ "$label" == "#"* ]] && continue
     [[ -z "$label" ]] && continue

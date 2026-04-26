@@ -239,7 +239,7 @@ write_profiles_conf() {
     # Write header
     cat > "$GIDEON_PROFILES_CONF" <<EOF
 # gideon profile registry — generated on $(date +%Y-%m-%d)
-# Format: label:email:directory
+# Format: label:email:directory:provider
 # Used by the pre-commit guard hook
 EOF
 
@@ -248,8 +248,9 @@ EOF
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
-
-        printf '%s:%s:%s\n' "$label" "$email" "$dir" >> "$GIDEON_PROFILES_CONF"
+        local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
+        
+        printf '%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" >> "$GIDEON_PROFILES_CONF"
     done
 
     print_success "Created profile registry: $GIDEON_PROFILES_CONF"
