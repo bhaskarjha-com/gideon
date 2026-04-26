@@ -128,10 +128,10 @@ write_global_gitconfig() {
         # File exists WITH managed block → replace it
         local tmp_file
         tmp_file=$(mktemp "${gitconfig}.tmp.XXXXXX")
-
-        awk -v block="$managed_block" '
+        export MANAGED_BLOCK="$managed_block"
+        awk '
             /\[gideon:managed:start\]/ {
-                if (!written) { print block; written=1 }
+                if (!written) { print ENVIRON["MANAGED_BLOCK"]; written=1 }
                 skip=1; next
             }
             /\[gideon:managed:end\]/   { skip=0; next }
