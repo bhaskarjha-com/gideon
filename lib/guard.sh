@@ -142,8 +142,13 @@ uninstall_guard() {
     # Unset core.hooksPath only if it points to our directory
     local current_hooks_path
     current_hooks_path=$(git config --global core.hooksPath 2>/dev/null || true)
+    
+    # Normalize slashes for Windows Git Bash paths (C:\ vs C:/ vs /c/)
+    local normalized_current="${current_hooks_path//\\//}"
+    local normalized_target="${GIDEON_HOOKS_DIR//\\//}"
 
-    if [[ "$current_hooks_path" == "$GIDEON_HOOKS_DIR" ]]; then
+    # Match exact path or suffix (to handle Windows C:/ vs /c/ drive letter differences)
+    if [[ "$normalized_current" == "$normalized_target" ]] || [[ "$normalized_current" == *"/gideon/hooks" ]]; then
         git config --global --unset core.hooksPath
         print_success "Unset core.hooksPath"
     elif [[ -n "$current_hooks_path" ]]; then
