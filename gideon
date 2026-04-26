@@ -404,7 +404,7 @@ cmd_setup() {
     print_info "protect them with a passphrase (secure). If you choose secure,"
     print_info "ssh-keygen will interactively prompt you for a passphrase."
     if confirm "Protect new SSH keys with a passphrase?" "n"; then
-        GIDEON_USE_PASSPHRASE=1
+        export GIDEON_USE_PASSPHRASE=1
     fi
 
     # --- Review plan ---

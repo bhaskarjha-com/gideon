@@ -3,7 +3,6 @@
 set -euo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GIDEON_ROOT="$(dirname "$TEST_DIR")"
 
 source "$TEST_DIR/helpers.sh"
 source_gideon_libs
