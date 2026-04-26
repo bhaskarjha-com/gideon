@@ -16,6 +16,7 @@
 # --- CRLF self-healing for VirtualBox shared folders ---
 # vboxsf injects \r into all files. Unconditionally re-exec through tr on first run.
 # tr -d '\r' is a no-op on clean files, so this is safe everywhere.
+if ! command -v tr >/dev/null 2>&1; then echo "Error: 'tr' command is required but not found." >&2; exit 1; fi
 # shellcheck disable=SC2270
 test "${GIDEON_CRLF_CLEAN:-}" = "1" || { export GIDEON_CRLF_CLEAN=1; export GIDEON_ORIG_SCRIPT="${BASH_SOURCE[0]:-$0}"; exec bash <(tr -d '\r' < "${BASH_SOURCE[0]:-$0}") "$@"; }
 
@@ -171,13 +172,13 @@ cmd_status() {
     # Show profile registry if it exists
     if [[ -f "$GIDEON_PROFILES_CONF" ]]; then
         print_section "Configured Profiles"
-        printf >&2 '  %-12s %-30s %-15s %s\n' "Label" "Email" "Provider" "Directory"
-        printf >&2 '  %-12s %-30s %-15s %s\n' "-----" "-----" "--------" "---------"
+        printf >&2 '  %-15s %-30s %-15s %s\n' "Label" "Email" "Provider" "Directory"
+        printf >&2 '  %-15s %-30s %-15s %s\n' "-----" "-----" "--------" "---------"
 
         while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
             [[ "$label" == "#"* ]] && continue
             [[ -z "$label" ]] && continue
-            printf >&2 '  %-12s %-30s %-15s %s\n' "$label" "$email" "${provider:-github.com}" "${dir:-[Manual Mode]}"
+            printf >&2 '  %-15s %-30s %-15s %s\n' "$label" "$email" "${provider:-github.com}" "${dir:-[Manual Mode]}"
         done < "$GIDEON_PROFILES_CONF"
     else
         print_info "No profiles configured. Run 'gideon setup' to get started."

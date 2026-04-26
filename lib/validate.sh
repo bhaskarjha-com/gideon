@@ -108,12 +108,18 @@ validate_path() {
         return 0
     fi
 
-    # If parent directory exists and is writable, valid (user can create it)
-    local parent
-    parent=$(dirname "$path")
-    if [[ -d "$parent" ]] && [[ -w "$parent" ]]; then
-        return 0
-    fi
+    # Recursively check if the nearest existing ancestor is writable
+    local current="$path"
+    while [[ "$current" != "/" && "$current" != "." ]]; do
+        current=$(dirname "$current")
+        if [[ -d "$current" ]]; then
+            if [[ -w "$current" ]]; then
+                return 0
+            else
+                return 1
+            fi
+        fi
+    done
 
     return 1
 }

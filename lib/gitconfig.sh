@@ -129,27 +129,14 @@ write_global_gitconfig() {
         local tmp_file
         tmp_file=$(mktemp "${gitconfig}.tmp.XXXXXX")
 
-        local in_managed=0
-        local managed_written=0
-
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            if [[ "$line" == *"[gideon:managed:start]"* ]]; then
-                in_managed=1
-                # Write new managed block at this position
-                if [[ "$managed_written" -eq 0 ]]; then
-                    printf '%s\n' "$managed_block" >> "$tmp_file"
-                    managed_written=1
-                fi
-                continue
-            fi
-            if [[ "$line" == *"[gideon:managed:end]"* ]]; then
-                in_managed=0
-                continue
-            fi
-            if [[ "$in_managed" -eq 0 ]]; then
-                printf '%s\n' "$line" >> "$tmp_file"
-            fi
-        done < "$gitconfig"
+        awk -v block="$managed_block" '
+            /\[gideon:managed:start\]/ {
+                if (!written) { print block; written=1 }
+                skip=1; next
+            }
+            /\[gideon:managed:end\]/   { skip=0; next }
+            !skip                      { print }
+        ' "$gitconfig" > "$tmp_file"
 
         mv "$tmp_file" "$gitconfig"
         print_success "Updated managed block in: $gitconfig"

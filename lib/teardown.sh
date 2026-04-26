@@ -35,21 +35,11 @@ teardown_gitconfig() {
     local tmp_file
     tmp_file=$(mktemp "${gitconfig}.tmp.XXXXXX")
 
-    local in_managed=0
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$line" == *"[gideon:managed:start]"* ]]; then
-            in_managed=1
-            continue
-        fi
-        if [[ "$line" == *"[gideon:managed:end]"* ]]; then
-            in_managed=0
-            continue
-        fi
-        if [[ "$in_managed" -eq 0 ]]; then
-            printf '%s\n' "$line" >> "$tmp_file"
-        fi
-    done < "$gitconfig"
+    awk '
+        /\[gideon:managed:start\]/ {skip=1; next}
+        /\[gideon:managed:end\]/   {skip=0; next}
+        !skip                      {print}
+    ' "$gitconfig" > "$tmp_file"
 
     # If the resulting file is empty or only whitespace, delete it
     if ! grep -q '[^[:space:]]' "$tmp_file" 2>/dev/null; then
@@ -57,13 +47,7 @@ teardown_gitconfig() {
         rm -f "$gitconfig"
         print_success "Removed ~/.gitconfig (it was empty after cleanup)"
     else
-        # Remove multiple trailing blank lines using awk for portability
-        awk -v RS='\n' -v ORS='\n' '
-            /^[[:space:]]*$/ { blank++; next }
-            { for(i=0; i<blank; i++) print ""; blank=0; print $0 }
-        ' < "$tmp_file" > "${tmp_file}.clean"
-        mv "${tmp_file}.clean" "$gitconfig"
-        rm -f "$tmp_file"
+        mv "$tmp_file" "$gitconfig"
         print_success "Removed managed block from: $gitconfig"
     fi
 }
@@ -96,21 +80,11 @@ teardown_sshconfig() {
     local tmp_file
     tmp_file=$(mktemp "${ssh_config}.tmp.XXXXXX")
 
-    local in_managed_block=0
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$line" == *"[gideon:managed:start]"* ]]; then
-            in_managed_block=1
-            continue
-        fi
-        if [[ "$line" == *"[gideon:managed:end]"* ]]; then
-            in_managed_block=0
-            continue
-        fi
-        if [[ "$in_managed_block" -eq 0 ]]; then
-            printf '%s\n' "$line" >> "$tmp_file"
-        fi
-    done < "$ssh_config"
+    awk '
+        /\[gideon:managed:start\]/ {skip=1; next}
+        /\[gideon:managed:end\]/   {skip=0; next}
+        !skip                      {print}
+    ' "$ssh_config" > "$tmp_file"
 
     # If the resulting file is empty or only whitespace, delete it
     if ! grep -q '[^[:space:]]' "$tmp_file" 2>/dev/null; then
@@ -118,12 +92,7 @@ teardown_sshconfig() {
         rm -f "$ssh_config"
         print_success "Removed ~/.ssh/config (it was empty after cleanup)"
     else
-        awk -v RS='\n' -v ORS='\n' '
-            /^[[:space:]]*$/ { blank++; next }
-            { for(i=0; i<blank; i++) print ""; blank=0; print $0 }
-        ' < "$tmp_file" > "${tmp_file}.clean"
-        mv "${tmp_file}.clean" "$ssh_config"
-        rm -f "$tmp_file"
+        mv "$tmp_file" "$ssh_config"
         print_success "Removed managed blocks from: $ssh_config"
     fi
 }

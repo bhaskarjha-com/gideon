@@ -28,12 +28,15 @@ You work with multiple Git identities — personal, work, freelance, open-source
 ## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/bhaskarjha-com/gideon.git
-cd gideon
-./gideon setup
+curl -fsSL https://raw.githubusercontent.com/bhaskarjha-com/gideon/main/install.sh | bash
 ```
 
-That's it. Answer the interactive prompts, copy the generated public keys to GitHub, and you're done.
+This will download and install `gideon` to `~/.local/bin`. Once installed, run:
+```bash
+gideon setup
+```
+
+That's it. Answer the interactive prompts, copy the generated public keys to your Git provider, and you're done.
 
 ---
 

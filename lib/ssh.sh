@@ -30,9 +30,9 @@ generate_ssh_key() {
     # Create ~/.ssh if it doesn't exist
     if [[ ! -d "$HOME/.ssh" ]]; then
         mkdir -p "$HOME/.ssh"
-        chmod 700 "$HOME/.ssh"
         print_step "Created ~/.ssh directory"
     fi
+    chmod 700 "$HOME/.ssh"
 
     # Check if key already exists
     if [[ -f "$key_path" ]]; then
@@ -137,8 +137,8 @@ write_ssh_config() {
     # Create ~/.ssh if needed
     if [[ ! -d "$HOME/.ssh" ]]; then
         mkdir -p "$HOME/.ssh"
-        chmod 700 "$HOME/.ssh"
     fi
+    chmod 700 "$HOME/.ssh"
 
     # Dry run
     if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
@@ -157,27 +157,14 @@ write_ssh_config() {
 
     # Remove existing managed blocks
     if [[ -f "$ssh_config" ]]; then
-        # Create temp file without managed blocks
         local tmp_file
         tmp_file=$(mktemp "${ssh_config}.tmp.XXXXXX")
 
-        local in_managed_block=0
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            # Check for start marker
-            if [[ "$line" == *"[gideon:managed:start]"* ]]; then
-                in_managed_block=1
-                continue
-            fi
-            # Check for end marker
-            if [[ "$line" == *"[gideon:managed:end]"* ]]; then
-                in_managed_block=0
-                continue
-            fi
-            # Only write non-managed lines
-            if [[ "$in_managed_block" -eq 0 ]]; then
-                printf '%s\n' "$line" >> "$tmp_file"
-            fi
-        done < "$ssh_config"
+        awk '
+            /\[gideon:managed:start\]/ {skip=1; next}
+            /\[gideon:managed:end\]/   {skip=0; next}
+            !skip                      {print}
+        ' "$ssh_config" > "$tmp_file"
 
         mv "$tmp_file" "$ssh_config"
     fi

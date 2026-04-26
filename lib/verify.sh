@@ -140,7 +140,7 @@ verify_ssh_connectivity() {
         printf >&2 '  Testing SSH: %s ... ' "$host"
 
         local output
-        output=$(ssh -T -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "git@${host}" 2>&1 || true)
+        output=$(ssh -T -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR "git@${host}" 2>&1 || true)
 
         if printf '%s' "$output" | grep -qi "successfully authenticated\|logged in as\|welcome to"; then
             printf >&2 '%b%s authenticated%b\n' "$GREEN" "$SYM_CHECK" "$RESET"
