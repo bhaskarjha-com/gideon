@@ -134,6 +134,11 @@ validate_no_overlap() {
     shift
     local existing_paths=("$@")
 
+    # Empty paths don't overlap
+    if [[ -z "$new_path" ]]; then
+        return 0
+    fi
+
     # Normalize and ensure trailing slash for comparison
     new_path=$(normalize_path "$new_path")
     local new_with_slash="${new_path}/"

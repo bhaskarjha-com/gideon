@@ -344,25 +344,22 @@ cmd_setup() {
         # Directory (not needed for default profile — it's the fallback)
         local dir=""
         if [[ "$i" -gt 1 ]]; then
-            ask_path "Directory for this profile (e.g., ~/dev/work)" ""
+            ask_path "Directory for this profile (e.g., ~/dev/work) [Optional]" ""
             dir="$REPLY"
-
-            while [[ -z "$dir" ]]; do
-                print_warning "Directory is required for non-default profiles."
-                ask_path "Directory for this profile" ""
-                dir="$REPLY"
-            done
-
-            # Validate no overlap
-            if ! validate_no_overlap "$dir" "${PROFILE_DIRS[@]+"${PROFILE_DIRS[@]}"}"; then
-                print_warning "Directory '$dir' overlaps with an existing profile."
-                print_info "Git uses the last matching includeIf, so overlaps can cause confusion."
-                if ! confirm "Continue anyway?" "n"; then
-                    print_info "Skipping this profile."
-                    continue
+            
+            if [[ -z "$dir" ]]; then
+                print_info "No directory provided. This profile will run in Manual Mode (host alias only)."
+            else
+                # Validate no overlap
+                if ! validate_no_overlap "$dir" "${PROFILE_DIRS[@]+"${PROFILE_DIRS[@]}"}"; then
+                    print_warning "Directory '$dir' overlaps with an existing profile."
+                    print_info "Git uses the last matching includeIf, so overlaps can cause confusion."
+                    if ! confirm "Continue anyway?" "n"; then
+                        print_info "Skipping this profile."
+                        continue
+                    fi
                 fi
             fi
-        fi
 
         # Store profile
         PROFILE_LABELS+=("$label")

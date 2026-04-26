@@ -87,6 +87,11 @@ verify_git_config() {
         local email="${PROFILE_EMAILS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
 
+        # Skip manual mode profiles
+        if [[ -z "$dir" ]]; then
+            continue
+        fi
+
         # Find first git repo in the profile directory
         if [[ -d "$dir" ]]; then
             local repo_dir

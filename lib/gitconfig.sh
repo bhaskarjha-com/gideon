@@ -74,16 +74,18 @@ EOF
         local label="${PROFILE_LABELS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
 
-        # Ensure trailing slash for gitdir matching
-        if [[ "$dir" != */ ]]; then
-            dir="${dir}/"
-        fi
+        if [[ -n "$dir" ]]; then
+            # Ensure trailing slash for gitdir matching
+            if [[ "$dir" != */ ]]; then
+                dir="${dir}/"
+            fi
 
-        cat <<EOF
+            cat <<EOF
 
 [includeIf "${gitdir_kw}${dir}"]
     path = ${GIDEON_PROFILES_DIR}/${label}.gitconfig
 EOF
+        fi
     done
 
     # Close managed block

@@ -49,6 +49,11 @@ Other tools require you to memorize custom SSH host aliases (like `git clone git
 > **How is this possible?**
 > Git's `includeIf` conditional rules instantly activate the moment a new `.git` directory is created. During the clone process, Git initializes the folder locally, immediately triggers gideon's `includeIf` rule, reads the `core.sshCommand` for that profile, and dynamically injects the correct SSH key mid-flight before the connection to GitHub is ever made!
 
+### Power Users: Manual Mode (Directory-less Profiles)
+If you prefer **not** to tie your identities to specific folders, you can run Gideon in Manual Mode. During setup, simply press `Enter` to leave the directory prompt blank. 
+Gideon will skip generating `includeIf` rules for that profile, but will still generate the SSH keys and host aliases. You can then clone using the alias directly:
+`git clone git@github-work:company/repo.git`
+
 ---
 
 ## ⚡ Why Gideon?

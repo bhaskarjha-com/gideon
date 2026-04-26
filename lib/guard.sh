@@ -74,6 +74,9 @@ while IFS=: read -r label email dir || [[ -n "$label" ]]; do
     # Skip comments and empty lines
     [[ "$label" == "#"* ]] && continue
     [[ -z "$label" ]] && continue
+    
+    # Skip manual mode profiles (no directory)
+    [[ -z "$dir" ]] && continue
 
     # Normalize: ensure trailing slash for prefix matching
     dir_slash="${dir%/}/"
