@@ -1,170 +1,109 @@
-# Troubleshooting
+# Troubleshooting Gideon
 
-## VirtualBox Shared Folders
+Gideon is designed to be self-healing, but Git environments can be uniquely complex. This guide helps you diagnose and resolve common identity and SSH issues.
 
-### CRLF Line Endings (Auto-Fixed)
+---
 
-**Problem**: VirtualBox `vboxsf` mounts inject `\r` (CRLF) into every file, breaking bash scripts.
+## ⚡ Quick Diagnostics
 
-**Solution**: gideon handles this automatically. The main script detects CRLF contamination and re-executes itself through `tr -d '\r'` at runtime. No manual intervention needed.
+Before digging into specifics, run Gideon's built-in diagnostic tools. These instantly surface 90% of misconfigurations.
 
-If you're developing gideon itself on a shared folder, see [ARCHITECTURE.md](ARCHITECTURE.md#crlf-self-healing-virtualbox) for how the self-healing works.
-
-### SSH Key Permissions
-
-**Problem**: SSH keys on VirtualBox shared folders (`vboxsf`) get `0777` permissions, which SSH rejects.
-
-**Solution**: Store SSH keys on the native filesystem, not the shared folder:
-
+### 1. Check Active Status
+Navigate to the repository you are having trouble with and run:
 ```bash
-# Keys should be at ~/.ssh/ on the VM's native filesystem
-# NOT at /media/sf_dev/.ssh/ or similar shared paths
-ls -la ~/.ssh/id_ed25519_*
-# Should show: -rw------- (600)
+./gideon status
+```
+This will tell you exactly which identity Git is using for the current directory and the specific SSH key it will attempt to use.
+
+### 2. Verify Infrastructure
+Run the full verification suite to ensure your keys, configs, and permissions are perfectly aligned:
+```bash
+./gideon verify
 ```
 
-If permissions are wrong:
-```bash
-chmod 600 ~/.ssh/id_ed25519_*
-chmod 644 ~/.ssh/id_ed25519_*.pub
-```
+---
 
-### `safe.directory` Warnings
+## 🔑 SSH Connectivity Issues
 
-**Problem**: Git refuses to operate in shared folders, showing `unsafe repository` errors.
-
-**Solution**:
-```bash
-# Add specific paths (recommended)
-git config --global --add safe.directory /media/sf_dev/pro/myrepo
-
-# Or allow all (less secure, but convenient for dev VMs)
-git config --global safe.directory '*'
-```
-
-## WSL (Windows Subsystem for Linux)
-
-### SSH Agent
-
-WSL does not share the Windows SSH agent. Start the agent in each WSL session:
-
-```bash
-eval "$(ssh-agent -s)"
-ssh-add ~/.ssh/id_ed25519_<label>
-```
-
-To auto-start, add to your `~/.bashrc`:
-```bash
-if [ -z "$SSH_AUTH_SOCK" ]; then
-    eval "$(ssh-agent -s)" > /dev/null
-fi
-```
-
-### Path Differences
-
-WSL uses Linux paths (`/home/user/`) not Windows paths (`C:\Users\user\`). gideon detects WSL automatically and uses the correct path format.
-
-## Git Bash on Windows
-
-### Line Endings
-
-gideon's `.gitattributes` enforces LF line endings. If you see CRLF-related issues:
-```bash
-git config --global core.autocrlf input
-```
-
-### Path Format
-
-Git Bash uses POSIX-style paths (`/c/Users/...`). gideon normalizes paths automatically, but if you manually edit config files, use forward slashes.
-
-## SSH Issues
+> [!WARNING]
+> If Git prompts you for a password or says `Permission denied (publickey)`, your SSH key is either not loaded, not registered with GitHub, or Git is using the wrong key.
 
 ### "Permission denied (publickey)"
 
-This means the SSH key hasn't been added to GitHub/GitLab:
+This almost always means your public key hasn't been uploaded to GitHub/GitLab.
 
-1. Copy your public key: `cat ~/.ssh/id_ed25519_<label>.pub`
-2. Add it at: https://github.com/settings/ssh/new
-3. Test: `ssh -T git@github-<label>`
+1. **Copy your public key:** `cat ~/.ssh/id_ed25519_<label>.pub`
+2. **Add it to GitHub:** Navigate to [GitHub SSH Settings](https://github.com/settings/ssh/new) and paste the key.
+3. **Verify Connection:** Use the testing alias to verify GitHub recognizes the key:
+   ```bash
+   ssh -T git@github-<label>
+   # Expected: Hi username! You've successfully authenticated...
+   ```
 
 ### "Key already exists" on GitHub
 
-Each SSH public key can only be added to ONE GitHub account. If you see this error:
-- The key is already registered on a different GitHub account
-- Remove it from the other account first, or generate a new key
+> [!IMPORTANT]
+> GitHub strictly enforces a 1-to-1 mapping: Each SSH public key can only be attached to **ONE** GitHub account. 
+
+If you see this error, you are trying to add a key to your `work` account that is already attached to your `personal` account. You must generate a unique key for each account (which `gideon setup` handles automatically).
 
 ### "Could not resolve hostname github-pro"
 
-The host alias `github-pro` is defined in `~/.ssh/config`. Check that:
-1. The file exists: `cat ~/.ssh/config`
-2. It contains the `Host github-pro` block
-3. There are no syntax errors (extra spaces, missing fields)
+> [!NOTE]
+> Gideon generates host aliases (like `github-pro`) **purely for testing connectivity**. You do NOT need to use them when cloning repositories.
 
-### Testing SSH Connectivity
+If you are running an `ssh -T` test and get this error, check your `~/.ssh/config`:
+1. Ensure the file exists.
+2. Verify it contains the `# [gideon:managed:start] pro` block.
+3. If it is missing, simply run `./gideon setup` again. Gideon is fully idempotent and will safely repair the file.
 
-```bash
-# Test each profile
-ssh -T git@github-global
-ssh -T git@github-pro
-ssh -T git@github-work
+---
 
-# Expected success output:
-# Hi username! You've successfully authenticated...
+## ⚙️ Git Configuration Issues
 
-# Debug mode for detailed info:
-ssh -vT git@github-pro
+### The `includeIf` Rule is Not Triggering
+
+If you `cd` into a profile directory but Git still uses your global identity, the `includeIf` rule failed to activate.
+
+> [!TIP]
+> Run `git config --show-origin --get-all core.sshCommand` to see exactly where Git is loading your SSH configuration from.
+
+**Common Causes:**
+1. **Trailing Slash:** The path in `~/.gitconfig` must end with a trailing slash (e.g., `gitdir:~/dev/pro/`). Gideon handles this automatically.
+2. **Missing `.git` Directory:** `includeIf` only triggers if the current folder is a Git repository, OR if you are actively cloning a repository into it.
+3. **Dubious Ownership (VirtualBox/WSL):** Git actively blocks `includeIf` execution if the directory is owned by a different user (common in shared mounts). Gideon automatically mitigates this using `safe.directory` rules. If you manually moved folders, run `./gideon setup` again to update the safe directories.
+
+### Identity Guard Hook Triggered
+
+```text
+⚠ gideon: Identity mismatch detected!
+  Expected: work@company.com (profile: work)
+  Actual:   personal@gmail.com
 ```
 
-> **Note:** These host aliases (`github-pro`, `github-work`) are generated **purely for testing connectivity**. You do NOT need to use them when cloning repositories. You can always clone normally using `git clone git@github.com:...` as long as you are inside your profile's configured directory!
+This is Gideon protecting you! The pre-commit hook detected that you are about to commit code using an email address that does not match the profile configured for this directory.
 
-## Git Config Issues
+**How to Fix:**
+1. You may be in the wrong directory.
+2. If you want to bypass the hook for a specific commit, run:
+   ```bash
+   git commit --no-verify
+   ```
 
-### includeIf Not Working
+---
 
-The `includeIf "gitdir:..."` directive requires:
+## 🗑️ Resetting Everything (The Nuclear Option)
 
-1. **Trailing slash** on the path: `gitdir:~/dev/pro/` (not `gitdir:~/dev/pro`)
-2. **The directory must contain a git repo** (`.git` directory)
-3. **Case sensitivity**: Use `gitdir/i:` on Windows/Git Bash for case-insensitive matching
+If your Git or SSH environment is completely corrupted, the safest route is to wipe the slate clean and start over.
 
-gideon handles all three automatically, but if you manually edit `~/.gitconfig`, watch for these.
+1. **Safely remove all Gideon configurations:**
+   ```bash
+   ./gideon teardown
+   ```
+   *(This cleanly removes Gideon from `~/.gitconfig` and `~/.ssh/config` without touching your custom settings. It leaves your SSH keys safely on disk so you aren't locked out of GitHub).*
 
-### Checking Active Identity
-
-```bash
-# In any directory:
-git config user.email
-git config user.name
-git config core.sshCommand
-
-# See where a value comes from:
-git config --show-origin user.email
-```
-
-## Guard Hook Issues
-
-### Hook Not Triggering
-
-Check that `core.hooksPath` is set:
-```bash
-git config --global core.hooksPath
-# Should show: ~/.config/gideon/hooks
-```
-
-Check the hook is executable:
-```bash
-ls -la ~/.config/gideon/hooks/pre-commit
-# Should show: -rwx------
-```
-
-### Bypassing the Hook
-
-For a single commit:
-```bash
-git commit --no-verify -m "message"
-```
-
-To disable permanently:
-```bash
-./gideon guard --uninstall
-```
+2. **Re-run the setup:**
+   ```bash
+   ./gideon setup
+   ```
+   When prompted about existing keys, select `skip (keep current)` to immediately restore your access without needing to upload new keys to GitHub.

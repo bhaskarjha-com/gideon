@@ -1,185 +1,123 @@
-# Architecture
+# Gideon Architecture
 
-> This document describes the internal design of gideon. For usage, see [README.md](../README.md).
-> For platform-specific issues, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+gideon is a zero-dependency, pure Bash 3.2 system designed to perfectly orchestrate Git identities across multiple environments. It is built to be strictly idempotent, entirely transparent, and robust enough to handle the most notorious edge cases in cross-platform development (CRLF line-endings, Windows pathing, and VirtualBox shared folder ownership).
 
-## Module Dependency Graph
+## 🗺️ Configuration Architecture
+
+At its core, Gideon stitches together `~/.gitconfig`, `~/.ssh/config`, and directory-specific profile configurations using Git's native `includeIf` capability.
 
 ```mermaid
 graph TD
-    MAIN[gideon] --> CORE[lib/core.sh]
-    MAIN --> PLAT[lib/platform.sh]
-    MAIN --> UI[lib/ui.sh]
-    MAIN --> VAL[lib/validate.sh]
-    MAIN --> BKP[lib/backup.sh]
-    MAIN --> SSH[lib/ssh.sh]
-    MAIN --> GIT[lib/gitconfig.sh]
-    MAIN --> GRD[lib/guard.sh]
-    MAIN --> VER[lib/verify.sh]
-    MAIN --> TDN[lib/teardown.sh]
+    subgraph System
+        G[~/.gitconfig]
+        S[~/.ssh/config]
+    end
 
-    SSH --> CORE
-    SSH --> PLAT
-    SSH --> UI
-    SSH --> BKP
+    subgraph Gideon Profiles directory
+        PC[profiles.conf registry]
+        P1[pro.gitconfig]
+        P2[work.gitconfig]
+    end
 
-    GIT --> CORE
-    GIT --> PLAT
-    GIT --> UI
-    GIT --> BKP
+    subgraph SSH Keys
+        K1[~/.ssh/id_ed25519_global]
+        K2[~/.ssh/id_ed25519_pro]
+        K3[~/.ssh/id_ed25519_work]
+    end
 
-    GRD --> CORE
-    GRD --> UI
-    GRD --> BKP
+    G -- includeIf gitdir:/dev/pro/ --> P1
+    G -- includeIf gitdir:/dev/work/ --> P2
+    G -- Default core.sshCommand --> K1
 
-    VER --> CORE
-    VER --> UI
-    VER --> PLAT
+    P1 -- core.sshCommand --> K2
+    P2 -- core.sshCommand --> K3
 
-    BKP --> CORE
-    BKP --> UI
+    S -- Host github-pro --> K2
+    S -- Host github-work --> K3
 
-    VAL --> PLAT
+    PC -. Used by .-> Guard[Pre-commit Guard Hook]
 
-    TDN --> CORE
-    TDN --> UI
-    TDN --> BKP
-    TDN --> GRD
-
-    style MAIN fill:#2563eb,color:#fff
-    style CORE fill:#7c3aed,color:#fff
-    style UI fill:#059669,color:#fff
+    style G fill:#f9f,stroke:#333,stroke-width:2px
+    style S fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
-## Data Flow
+## ✨ The Magical Clone (Intercept Flow)
 
+Gideon's most powerful feature is its ability to seamlessly intercept standard `git clone` operations and automatically inject the correct SSH key mid-flight. This entirely eliminates the need for users to memorize or use custom SSH host aliases (`github-pro`) during cloning.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant Dir as Local Directory
+    participant Git as Git Client
+    participant Gid as Gideon Profile
+    participant GH as GitHub
+
+    U->>Dir: cd ~/dev/pro
+    U->>Git: git clone git@github.com:repo.git
+    
+    rect rgb(30, 40, 50)
+        Note right of Git: The Magical Intercept
+        Git->>Dir: Initialize local .git/ directory
+        Git->>Git: Evaluate includeIf rules
+        Git->>Gid: Match gitdir: ~/dev/pro/
+        Gid-->>Git: Inject core.sshCommand (id_ed25519_pro)
+    end
+
+    Git->>GH: Authenticate as "pro" identity
+    GH-->>Git: Access Granted
+    Git-->>Dir: Download Repository
+    Dir-->>U: Clone Successful
 ```
-User Input (prompts)
-    │
-    ▼
-┌─────────────────────────────┐
-│   Parallel Arrays (state)   │
-│   PROFILE_LABELS[0..n]      │
-│   PROFILE_NAMES[0..n]       │
-│   PROFILE_EMAILS[0..n]      │
-│   PROFILE_DIRS[0..n]        │
-└─────────────┬───────────────┘
-              │
-              │
-    ┌─────────┼─────────┐
-    ▼         ▼         ▼
-┌───────┐ ┌───────┐ ┌───────┐
-│ssh.sh │ │gitcfg │ │guard  │
-│       │ │  .sh  │ │  .sh  │
-└───┬───┘ └───┬───┘ └───┬───┘
-    │         │         │
-    ▼         ▼         ▼
-~/.ssh/    ~/.git     ~/.config/
- config    config     gideon/
-~/.ssh/    ~/.config/  hooks/
- keys      gideon/     pre-commit
-           profiles/
-```
 
-## Managed Block Protocol
+## 🛡️ Managed Block Protocol
 
-gideon uses comment markers to identify sections it owns in config files:
+gideon uses comment markers to identify sections it owns in config files. This guarantees that your custom configurations are never touched or overwritten.
 
-```
+```ini
 # [gideon:managed:start]
-<content controlled by gideon>
+<content exclusively controlled by gideon>
 # [gideon:managed:end]
 ```
 
-For profile-specific blocks:
-```
-# [gideon:managed:start] pro
-<content for profile "pro">
-# [gideon:managed:end] pro
-```
+### Rules of Idempotency
+1. On **first run**: markers are appended to the file.
+2. On **re-run**: everything between markers is surgically replaced. Content outside markers is strictly preserved.
+3. On **teardown**: the entire block (markers inclusive) is cleanly deleted.
 
-### Rules
+This makes all operations **idempotent** — running `gideon setup` ten times produces identical results to running it once.
 
-1. On **first run**: markers are added to the file (appended or as the entire content)
-2. On **re-run**: everything between markers is replaced. Content outside markers is untouched.
-3. On **removal**: the entire block (markers inclusive) is deleted.
+## 🐛 Self-Healing Infrastructure
 
-This makes all operations **idempotent** — running `gideon setup` twice produces identical results.
+### CRLF VirtualBox Mitigation
+VirtualBox shared folders (`vboxsf`) forcefully inject `\r` (CRLF) into every file on disk, breaking bash scripts because variable assignments get `\r` appended to their values. 
 
-## CRLF Self-Healing (VirtualBox)
-
-VirtualBox shared folders (`vboxsf`) inject `\r` (CRLF) into every file on disk, regardless of how the file was written. This breaks bash scripts because variable assignments get `\r` appended to their values.
-
-**gideon solves this at runtime with a self-healing block** at the top of the main script:
+**gideon solves this at runtime with a self-healing block** at the very top of the main script:
 
 ```bash
 # Line runs BEFORE set -euo pipefail
 test "${GIDEON_CRLF_CLEAN:-}" = "1" || { export GIDEON_CRLF_CLEAN=1; export GIDEON_ORIG_SCRIPT="${BASH_SOURCE[0]:-$0}"; exec bash <(tr -d '\r' < "${BASH_SOURCE[0]:-$0}") "$@"; }
 ```
 
-### How it works:
+1. On first run, `GIDEON_CRLF_CLEAN` is unset → the test fails.
+2. The script violently re-executes itself through `tr -d '\r'` via process substitution.
+3. On native Linux/macOS (no CRLF), `tr -d '\r'` is a no-op with zero overhead.
 
-1. On first run, `GIDEON_CRLF_CLEAN` is unset → the `test` fails
-2. The script re-executes itself through `tr -d '\r'` via process substitution
-3. `GIDEON_ORIG_SCRIPT` saves the real file path (since `BASH_SOURCE` becomes `/dev/fd/N` after re-exec)
-4. `resolve_script_dir()` reads `GIDEON_ORIG_SCRIPT` to find the lib directory
-5. All lib files are sourced via `gideon_source()` which also strips `\r`:
-   ```bash
-   gideon_source() { source <(tr -d '\r' < "$1"); }
-   ```
-6. On clean filesystems (no CRLF), `tr -d '\r'` is a no-op — zero overhead
+### Dubious Ownership (`safe.directory`)
+Git implements a strict security feature that disables configuration execution (like `includeIf`) if a repository folder is not owned by the current user. Shared mounts (VirtualBox, WSL) trigger this failure silently.
 
-### Why this matters:
-- No other bash tool handles this edge case
-- Makes gideon work directly on VirtualBox shared folders without manual line-ending fixes
-- The fix is invisible to users on clean systems
-
-## Configuration File Formats
-
-### `~/.config/gideon/profiles.conf`
-
-```
-# gideon profile registry
-# Format: label:email:directory
-global:hmmbhaskar@gmail.com:
-pro:bhaskarjha.com@gmail.com:/media/sf_dev/pro
-work:bhaskar@company.com:/home/user/work
-```
-
-- Lines starting with `#` are comments
-- Fields are colon-separated
-- The default profile has an empty directory field
-- Used by the guard hook for identity validation
-
-### Per-profile gitconfig (`~/.config/gideon/profiles/<label>.gitconfig`)
-
-Standard git config format, referenced by `includeIf` in `~/.gitconfig`:
+Gideon mitigates this natively. When you configure a profile directory, Gideon dynamically registers it in your `~/.gitconfig`:
 
 ```ini
-[user]
-    name = Bhaskar Jha
-    email = bhaskarjha.com@gmail.com
-[core]
-    sshCommand = ssh -i ~/.ssh/id_ed25519_pro
+[safe]
+    directory = /media/sf_dev/pro/*
 ```
+This guarantees that Git trusts your profile directories regardless of the underlying virtualization environment.
 
-## Bash 3.2 Compatibility
+## 🏗️ Design Decisions
 
-macOS ships bash 3.2 (GPLv2) and cannot upgrade to 4+ (GPLv3) by default. To maintain zero-dependency status, gideon avoids all bash 4+ features:
+### Why Bash 3.2?
+macOS ships bash 3.2 (GPLv2) and legally cannot ship 4+ (GPLv3). Requiring bash 4+ would mean forcing macOS users to install Homebrew, breaking the zero-dependency promise. All modern bash features (associative arrays, mapfile) have been meticulously replaced with portable POSIX/Bash 3.2 alternatives.
 
-| Avoided Feature | Replacement |
-|----------------|-------------|
-| `declare -A` (associative arrays) | Parallel indexed arrays |
-| `mapfile` / `readarray` | `while IFS= read -r` loops |
-| `${var,,}` (lowercase) | `tr '[:upper:]' '[:lower:]'` |
-| `|&` (pipe stderr) | `2>&1 |` |
-| `;&` / `;;&` (case fallthrough) | Explicit `case` branches |
-| `coproc` | Not needed |
-
-## Security Considerations
-
-- SSH private keys are generated with `chmod 600`
-- `~/.ssh/config` is set to `chmod 600`
-- `IdentitiesOnly yes` prevents SSH from trying all keys
-- No credentials, tokens, or passwords are ever stored
-- The guard hook only reads local config files — no network access
+### Why not Go or Rust?
+Zero dependency is the killer feature. Bash, Git, and ssh-keygen are available on every developer machine immediately. No version managers, no package managers, no binary downloads, and zero "binary rot." The tool works exactly as intended out of the box.
