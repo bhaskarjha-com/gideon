@@ -154,37 +154,43 @@ cmd_status() {
     current_name=$(git config user.name 2>/dev/null || echo "(not set)")
     current_email=$(git config user.email 2>/dev/null || echo "(not set)")
 
-    print_section "Active Git Identity"
-    printf >&2 '  Name:  %b%s%b\n' "$BOLD" "$current_name" "$RESET"
-    printf >&2 '  Email: %b%s%b\n' "$BOLD" "$current_email" "$RESET"
-
+    printf >&2 '  %b┌─ Active Identity ─────────────────────────────┐%b\n' "$BOLD" "$RESET"
+    printf >&2 '  %b│%b  Name:  %b%s%b\n' "$DIM" "$RESET" "$CYAN" "${current_name}" "$RESET"
+    printf >&2 '  %b│%b  Email: %b%s%b\n' "$DIM" "$RESET" "$CYAN" "${current_email}" "$RESET"
+    
     # Check if inside a git repo
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        local repo_root
-        repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-        printf >&2 '  Repo:  %s\n' "$repo_root"
-
         local ssh_cmd
         ssh_cmd=$(git config core.sshCommand 2>/dev/null || echo "(default)")
-        printf >&2 '  SSH:   %s\n' "$ssh_cmd"
+        printf >&2 '  %b│%b  SSH:   %b%s%b\n' "$DIM" "$RESET" "$GREEN" "${ssh_cmd}" "$RESET"
     fi
+    printf >&2 '  %b└───────────────────────────────────────────────┘%b\n\n' "$DIM" "$RESET"
 
     # Show profile registry if it exists
     if [[ -f "$GIDEON_PROFILES_CONF" ]]; then
         print_section "Configured Profiles"
-        printf >&2 '  %-15s %-30s %-15s %s\n' "Label" "Email" "Provider" "Directory"
-        printf >&2 '  %-15s %-30s %-15s %s\n' "-----" "-----" "--------" "---------"
 
         while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
             [[ "$label" == "#"* ]] && continue
             [[ -z "$label" ]] && continue
-            printf >&2 '  %-15s %-30s %-15s %s\n' "$label" "$email" "${provider:-github.com}" "${dir:-[Manual Mode]}"
+            
+            local dir_disp="${dir:-[Manual Mode]}"
+            local prov_disp="${provider:-github.com}"
+            
+            # Check if this profile matches current identity
+            local is_active="  "
+            if [[ "$email" == "$current_email" ]]; then
+                is_active="${GREEN}${SYM_CHECK} ${RESET}"
+            fi
+            
+            printf >&2 '  %s%b%s%b\n' "$is_active" "$BOLD" "$label" "$RESET"
+            printf >&2 '    %b├─%b %-9s %s\n' "$DIM" "$RESET" "Email:" "$email"
+            printf >&2 '    %b├─%b %-9s %s\n' "$DIM" "$RESET" "Provider:" "$prov_disp"
+            printf >&2 '    %b└─%b %-9s %s\n\n' "$DIM" "$RESET" "Path:" "$dir_disp"
         done < "$GIDEON_PROFILES_CONF"
     else
         print_info "No profiles configured. Run 'gideon setup' to get started."
     fi
-
-    printf >&2 '\n'
 
     # Platform info
     print_section "Environment"

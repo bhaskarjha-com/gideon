@@ -137,10 +137,31 @@ verify_ssh_connectivity() {
         prefix=$(printf '%s' "$provider" | cut -d'.' -f1)
         local host="${prefix}-${label}"
 
+        local tmp_out
+        tmp_out=$(mktemp)
+        
+        # Hide cursor
+        printf '\033[?25l' >&2
+        
+        ssh -T -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR "git@${host}" >"$tmp_out" 2>&1 &
+        local pid=$!
+        
+        local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+        while kill -0 "$pid" 2>/dev/null; do
+            local temp=${spinstr#?}
+            printf >&2 '\r  %b%c%b Testing SSH: %s ... ' "$CYAN" "${spinstr:0:1}" "$RESET" "$host"
+            local spinstr=$temp${spinstr:0:1}
+            sleep 0.1
+        done
+        wait "$pid" || true
+        
+        # Show cursor, clear line, and print clean base text
+        printf '\033[?25h\r\033[K' >&2
         printf >&2 '  Testing SSH: %s ... ' "$host"
-
+        
         local output
-        output=$(ssh -T -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR "git@${host}" 2>&1 || true)
+        output=$(cat "$tmp_out")
+        rm -f "$tmp_out"
 
         if printf '%s' "$output" | grep -qi "successfully authenticated\|logged in as\|welcome to"; then
             printf >&2 '%b%s authenticated%b\n' "$GREEN" "$SYM_CHECK" "$RESET"

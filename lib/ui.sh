@@ -39,10 +39,10 @@ setup_colors
 # ------------------------------------------------------------------------------
 # Unicode symbols (with ASCII fallback for terminals that don't support UTF-8)
 # ------------------------------------------------------------------------------
-SYM_CHECK="✔"
-SYM_CROSS="✖"
+SYM_CHECK="✓"
+SYM_CROSS="✗"
 SYM_WARN="⚠"
-SYM_INFO="ℹ"
+SYM_INFO="i"
 SYM_ARROW="→"
 # shellcheck disable=SC2034  # Available for future subcommands
 SYM_BULLET="•"
@@ -145,9 +145,9 @@ ask() {
     local default="${2:-}"
 
     if [[ -n "$default" ]]; then
-        printf >&2 '  %b?%b %s %b[%s]%b: ' "$MAGENTA" "$RESET" "$prompt" "$DIM" "$default" "$RESET"
+        printf >&2 '  %b[?]%b %s %b[%s]%b: ' "$CYAN" "$RESET" "$prompt" "$DIM" "$default" "$RESET"
     else
-        printf >&2 '  %b?%b %s: ' "$MAGENTA" "$RESET" "$prompt"
+        printf >&2 '  %b[?]%b %s: ' "$CYAN" "$RESET" "$prompt"
     fi
 
     read -r REPLY </dev/tty
@@ -163,7 +163,7 @@ ask_required() {
     REPLY=""
 
     while [[ -z "$REPLY" ]]; do
-        printf >&2 '  %b?%b %s %b(required)%b: ' "$MAGENTA" "$RESET" "$prompt" "$DIM" "$RESET"
+        printf >&2 '  %b[?]%b %s %b(required)%b: ' "$CYAN" "$RESET" "$prompt" "$DIM" "$RESET"
         read -r REPLY </dev/tty
 
         if [[ -z "$REPLY" ]]; then
@@ -211,7 +211,7 @@ ask_count() {
     local valid=0
 
     while [[ "$valid" -eq 0 ]]; do
-        printf >&2 '  %b?%b %s %b(%d-%d)%b: ' "$MAGENTA" "$RESET" "$prompt" "$DIM" "$min" "$max" "$RESET"
+        printf >&2 '  %b[?]%b %s %b(%d-%d)%b: ' "$CYAN" "$RESET" "$prompt" "$DIM" "$min" "$max" "$RESET"
         read -r REPLY </dev/tty
 
         if [[ "$REPLY" =~ ^[0-9]+$ ]] && [[ "$REPLY" -ge "$min" ]] && [[ "$REPLY" -le "$max" ]]; then
@@ -235,7 +235,7 @@ confirm() {
         hint="y/N"
     fi
 
-    printf >&2 '  %b?%b %s %b[%s]%b: ' "$MAGENTA" "$RESET" "$prompt" "$DIM" "$hint" "$RESET"
+    printf >&2 '  %b[?]%b %s %b[%s]%b: ' "$CYAN" "$RESET" "$prompt" "$DIM" "$hint" "$RESET"
     read -r REPLY </dev/tty
 
     # Empty reply → use default
@@ -261,7 +261,7 @@ ask_choice() {
     local count=${#options[@]}
     local valid=0
 
-    printf >&2 '  %b?%b %s:\n' "$MAGENTA" "$RESET" "$prompt"
+    printf >&2 '  %b[?]%b %s:\n' "$CYAN" "$RESET" "$prompt"
 
     local i
     for i in $(seq 0 $((count - 1))); do
