@@ -128,6 +128,20 @@ test_integration_backup_created() {
     return 1
 }
 
+test_integration_gideon_run() {
+    setup_two_profiles
+
+    # Execute gideon run in a subshell, verify it exports the right email
+    local output
+    local gideon_script
+    gideon_script="$(dirname "${BASH_SOURCE[0]}")/../gideon"
+    
+    # We pipe env output to grep to find the GIT_AUTHOR_EMAIL
+    output=$("$gideon_script" run pro -- env | grep "^GIT_AUTHOR_EMAIL=")
+    
+    assert_equals "GIT_AUTHOR_EMAIL=pro@test.com" "$output" "gideon run exports correct environment variable"
+}
+
 # --- Run ---
 
 printf '\n%btest_integration.sh%b\n' "$T_BOLD" "$T_RESET"
@@ -141,4 +155,5 @@ run_test "global gitconfig is parseable by git" test_integration_gitconfig_parse
 run_test "profile gitconfig is parseable by git" test_integration_profile_gitconfig_parseable
 run_test "re-run is idempotent (no duplicates)" test_integration_idempotent_rerun
 run_test "backups are created during re-run" test_integration_backup_created
+run_test "gideon run exports correctly" test_integration_gideon_run
 print_results "Integration tests"

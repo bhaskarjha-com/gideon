@@ -34,6 +34,7 @@ ${GIDEON_MANAGED_START}
 [user]
     name = ${default_name}
     email = ${default_email}
+    useConfigOnly = true
 
 [core]
     sshCommand = ssh -i ~/.ssh/id_ed25519_${default_label}

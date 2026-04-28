@@ -47,6 +47,29 @@ validate_email() {
 }
 
 # ------------------------------------------------------------------------------
+# validate_github_noreply_email — Check if email matches GitHub's strict mask
+#
+# Rules:
+#   - Format: ID+username@users.noreply.github.com
+#
+# Usage: if validate_github_noreply_email "123+name@users.noreply.github.com"; then ...
+# ------------------------------------------------------------------------------
+validate_github_noreply_email() {
+    local email="$1"
+    
+    if [[ -z "$email" ]]; then
+        return 1
+    fi
+
+    local github_regex="^[0-9]+\+[a-zA-Z0-9_-]+@users\.noreply\.github\.com$"
+    if [[ ! "$email" =~ $github_regex ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# ------------------------------------------------------------------------------
 # validate_label — Profile label validation
 #
 # Rules:

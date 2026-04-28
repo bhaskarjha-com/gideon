@@ -39,6 +39,28 @@ test_email_invalid_trailing_dot() {
     assert_exit_code 1 validate_email "user@example."
 }
 
+# --- GitHub No-Reply Email tests ---
+
+test_github_email_valid_simple() {
+    assert_exit_code 0 validate_github_noreply_email "12345+bhaskar@users.noreply.github.com"
+}
+
+test_github_email_valid_hyphen() {
+    assert_exit_code 0 validate_github_noreply_email "12345+bhaskar-jha@users.noreply.github.com"
+}
+
+test_github_email_invalid_no_plus() {
+    assert_exit_code 1 validate_github_noreply_email "12345bhaskar@users.noreply.github.com"
+}
+
+test_github_email_invalid_no_id() {
+    assert_exit_code 1 validate_github_noreply_email "+bhaskar@users.noreply.github.com"
+}
+
+test_github_email_invalid_wrong_domain() {
+    assert_exit_code 1 validate_github_noreply_email "12345+bhaskar@github.com"
+}
+
 # --- Label tests ---
 
 test_label_valid_simple() {
@@ -133,6 +155,12 @@ run_test "invalid email: no @" test_email_invalid_no_at
 run_test "invalid email: no local part" test_email_invalid_no_local
 run_test "invalid email: no domain dot" test_email_invalid_no_domain_dot
 run_test "invalid email: trailing dot" test_email_invalid_trailing_dot
+
+run_test "valid github email: simple" test_github_email_valid_simple
+run_test "valid github email: hyphen" test_github_email_valid_hyphen
+run_test "invalid github email: no plus" test_github_email_invalid_no_plus
+run_test "invalid github email: no id" test_github_email_invalid_no_id
+run_test "invalid github email: wrong domain" test_github_email_invalid_wrong_domain
 
 run_test "valid label: simple" test_label_valid_simple
 run_test "valid label: with hyphen" test_label_valid_hyphen

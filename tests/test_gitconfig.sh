@@ -23,7 +23,22 @@ test_global_block_has_user() {
     block=$(build_global_gitconfig_block)
 
     assert_contains "$block" "name = Test User" "has default name" &&
+    assert_contains "$block" "name = Test User" "has default name" &&
     assert_contains "$block" "email = global@test.com" "has default email"
+}
+
+test_global_block_has_useconfigonly() {
+    PROFILE_LABELS=("global")
+    PROFILE_NAMES=("Test User")
+    PROFILE_EMAILS=("global@test.com")
+    PROFILE_DIRS=("")
+    PROFILE_COUNT=1
+    DEFAULT_PROFILE_INDEX=0
+
+    local block
+    block=$(build_global_gitconfig_block)
+
+    assert_contains "$block" "useConfigOnly = true" "has useConfigOnly"
 }
 
 test_global_block_has_ssh_command() {
@@ -196,6 +211,7 @@ test_write_profiles_conf() {
 
 printf '\n%btest_gitconfig.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "global block contains default user" test_global_block_has_user
+run_test "global block contains useConfigOnly" test_global_block_has_useconfigonly
 run_test "global block contains sshCommand" test_global_block_has_ssh_command
 run_test "global block has includeIf for profiles" test_global_block_has_includeif
 run_test "global block has safe directories" test_global_block_has_safe_directories

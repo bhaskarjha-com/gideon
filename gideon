@@ -99,6 +99,7 @@ ${BOLD}USAGE${RESET}
     gideon setup [--dry-run]        Interactive setup wizard
     gideon status                   Show current identity configuration
     gideon verify                   Test SSH keys and git config
+    gideon run <profile> -- <cmd>   Run command as specific identity
     gideon teardown [--force]       Remove all gideon configurations
     gideon guard --install          Install pre-commit identity guard hook
     gideon guard --uninstall        Remove the guard hook
@@ -122,6 +123,9 @@ ${BOLD}EXAMPLES${RESET}
 
     ${DIM}# Check current identity:${RESET}
     ./gideon status
+
+    ${DIM}# Run git as a specific profile:${RESET}
+    ./gideon run work -- git commit -m "fix"
 
     ${DIM}# Install commit safety net:${RESET}
     ./gideon guard --install
@@ -341,35 +345,6 @@ cmd_setup() {
             name="$REPLY"
         fi
 
-        # Email
-        local default_email=""
-        if [[ "$i" -eq 1 ]]; then
-            default_email=$(git config --global user.email 2>/dev/null || echo "")
-        fi
-        ask_email "Email address" "$default_email"
-        local email="$REPLY"
-
-        # Directory (not needed for default profile — it's the fallback)
-        local dir=""
-        if [[ "$i" -gt 1 ]]; then
-            ask_path "Directory for this profile (e.g., ~/dev/work) [Optional]" ""
-            dir="$REPLY"
-            
-            if [[ -z "$dir" ]]; then
-                print_info "No directory provided. This profile will run in Manual Mode (host alias only)."
-            else
-                # Validate no overlap
-                if ! validate_no_overlap "$dir" "${PROFILE_DIRS[@]+"${PROFILE_DIRS[@]}"}"; then
-                    print_warning "Directory '$dir' overlaps with an existing profile."
-                    print_info "Git uses the last matching includeIf, so overlaps can cause confusion."
-                    if ! confirm "Continue anyway?" "n"; then
-                        print_info "Skipping this profile."
-                        continue
-                    fi
-                fi
-            fi
-        fi
-
         # Provider
         printf >&2 '\n  %bGit Provider%b\n' "$BOLD" "$RESET"
         printf >&2 '  1) GitHub (github.com)\n'
@@ -391,6 +366,53 @@ cmd_setup() {
                 done
                 ;;
         esac
+
+        # Email
+        local default_email=""
+        if [[ "$i" -eq 1 ]]; then
+            default_email=$(git config --global user.email 2>/dev/null || echo "")
+        fi
+        
+        local valid_email=0
+        local email=""
+
+        while [[ "$valid_email" -eq 0 ]]; do
+            ask_email "Email address" "$default_email"
+            email="$REPLY"
+
+            if [[ "$provider" == "github.com" ]] && ! validate_github_noreply_email "$email"; then
+                printf >&2 '\n'
+                print_warning "For privacy, GitHub recommends using your masked noreply email:"
+                print_warning "Format: ID+username@users.noreply.github.com"
+                if confirm "Use this email anyway?" "n"; then
+                    valid_email=1
+                fi
+            else
+                valid_email=1
+            fi
+        done
+
+
+        # Directory (not needed for default profile — it's the fallback)
+        local dir=""
+        if [[ "$i" -gt 1 ]]; then
+            ask_path "Directory for this profile (e.g., ~/dev/work) [Optional]" ""
+            dir="$REPLY"
+            
+            if [[ -z "$dir" ]]; then
+                print_info "No directory provided. This profile will run in Manual Mode (host alias only)."
+            else
+                # Validate no overlap
+                if ! validate_no_overlap "$dir" "${PROFILE_DIRS[@]+"${PROFILE_DIRS[@]}"}"; then
+                    print_warning "Directory '$dir' overlaps with an existing profile."
+                    print_info "Git uses the last matching includeIf, so overlaps can cause confusion."
+                    if ! confirm "Continue anyway?" "n"; then
+                        print_info "Skipping this profile."
+                        continue
+                    fi
+                fi
+            fi
+        fi
 
         # Store profile
         PROFILE_LABELS+=("$label")
@@ -527,6 +549,63 @@ cmd_setup() {
 }
 
 # ------------------------------------------------------------------------------
+# cmd_run — Execute a command under a specific profile identity
+# ------------------------------------------------------------------------------
+cmd_run() {
+    detect_os
+    local profile="$1"
+    shift
+    
+    if [[ -z "$profile" ]]; then
+        print_error "Usage: gideon run <profile> -- <command>"
+        return 1
+    fi
+    
+    if [[ "$1" == "--" ]]; then shift; fi
+    
+    if [[ $# -eq 0 ]]; then
+        print_error "No command provided. Usage: gideon run <profile> -- <command>"
+        return 1
+    fi
+    
+    # Check if profile exists
+    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
+        print_error "No profiles configured. Run 'gideon setup' first."
+        return 1
+    fi
+
+    local found=0
+    while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
+        if [[ "$label" == "$profile" ]]; then found=1; break; fi
+    done < "$GIDEON_PROFILES_CONF"
+    
+    if [[ "$found" -eq 0 ]]; then
+        print_error "Profile '$profile' not found in registry."
+        return 1
+    fi
+    
+    local name email
+    local config_file="$GIDEON_PROFILES_DIR/${profile}.gitconfig"
+    
+    if [[ ! -f "$config_file" ]]; then
+        # Global profile (stored in ~/.gitconfig)
+        name=$(git config --global user.name 2>/dev/null || echo "")
+        email=$(git config --global user.email 2>/dev/null || echo "")
+    else
+        name=$(git config -f "$config_file" user.name 2>/dev/null || echo "")
+        email=$(git config -f "$config_file" user.email 2>/dev/null || echo "")
+    fi
+    
+    export GIT_AUTHOR_NAME="$name"
+    export GIT_AUTHOR_EMAIL="$email"
+    export GIT_COMMITTER_NAME="$name"
+    export GIT_COMMITTER_EMAIL="$email"
+    export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_${profile}"
+    
+    exec "$@"
+}
+
+# ------------------------------------------------------------------------------
 # Main — Parse arguments and route to subcommand
 # ------------------------------------------------------------------------------
 main() {
@@ -537,6 +616,7 @@ main() {
         printf >&2 'Usage: gideon setup [--dry-run]    Start the setup wizard\n'
         printf >&2 '       gideon status               Show current identity\n'
         printf >&2 '       gideon verify               Test SSH and git config\n'
+        printf >&2 '       gideon run <profile> -- <cmd>  Run as identity\n'
         printf >&2 '       gideon teardown [--force]   Remove all configurations\n'
         printf >&2 '       gideon guard --install       Install commit guard hook\n'
         printf >&2 '       gideon --help                Full help\n\n'
@@ -569,6 +649,13 @@ main() {
             ;;
         verify)
             cmd_verify
+            ;;
+        run)
+            if [[ $# -lt 1 ]]; then
+                print_error "Usage: gideon run <profile> -- <command>"
+                return 1
+            fi
+            cmd_run "$@"
             ;;
         teardown)
             local force=0
