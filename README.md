@@ -117,6 +117,7 @@ Gideon's architecture was specifically designed to handle the entire bootstrappi
 
 - **Absolute Zero Dependencies:** Written in pure Bash 3.2. No Go, Node, Rust, or Homebrew required.
 - **Strictly Idempotent:** Safe to run multiple times. Gideon marks its config sections with managed blocks and surgically edits them using stateful filters. It never corrupts your custom configurations.
+- **Native Security & Convenience:** Automatically provisions Native SSH Commit Signing (`commit.gpgsign=true`) to generate "Verified" badges without GPG, and configures native OS-level `ssh-agent` auto-reloading to eliminate repeated passphrase prompts.
 - **Self-Healing:** Natively detects and fixes VirtualBox/WSL CRLF line-ending bugs, and automatically injects Git `safe.directory` rules to resolve "dubious ownership" errors on shared mounts.
 - **Beautiful UI:** Features a high-fidelity ANSI terminal interface with interactive prompts, dynamic SSH loading spinners, and an ASCII dashboard status command.
 
@@ -130,6 +131,8 @@ Gideon's architecture was specifically designed to handle the entire bootstrappi
 | `gideon setup --dry-run` | Preview what setup would do (no writes) |
 | `gideon status` | Show current identity dashboard and all profiles |
 | `gideon verify` | Test SSH keys, git config, and connectivity |
+| `gideon run <profile> -- <cmd>` | Execute a single command as a specific identity |
+| `gideon remove <profile>` | Surgically remove a single profile configuration |
 | `gideon teardown` | Remove all gideon configurations safely |
 | `gideon guard --install` | Install pre-commit identity mismatch guard |
 | `gideon guard --uninstall` | Remove the guard hook |
@@ -147,7 +150,7 @@ To truly understand the philosophy and engineering behind Gideon, read the manif
 
 ## 🤝 Contributing & License
 
-Gideon is comprehensively tested with an automated 76-suite integration test covering edge cases across macOS, Linux, Git Bash, and VirtualBox shared mounts. 
+Gideon is comprehensively tested with an automated 81-suite integration test covering edge cases across macOS, Linux, Git Bash, and VirtualBox shared mounts. 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 

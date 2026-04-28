@@ -115,8 +115,14 @@ Host ${prefix}-${label}
     User git
     IdentityFile ~/.ssh/id_ed25519_${label}
     IdentitiesOnly yes
-${GIDEON_MANAGED_END} ${label}
+    AddKeysToAgent yes
 EOF
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "    UseKeychain yes"
+    fi
+
+    echo "${GIDEON_MANAGED_END} ${label}"
 }
 
 # ------------------------------------------------------------------------------

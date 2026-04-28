@@ -174,7 +174,7 @@ cmd_status() {
     if [[ -f "$GIDEON_PROFILES_CONF" ]]; then
         print_section "Configured Profiles"
 
-        while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
+        while IFS=: read -r label email dir provider sign_commits || [[ -n "$label" ]]; do
             [[ "$label" == "#"* ]] && continue
             [[ -z "$label" ]] && continue
             
@@ -220,13 +220,14 @@ cmd_verify() {
 
     # Read profiles from registry
     PROFILE_COUNT=0
-    while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
+    while IFS=: read -r label email dir provider sign_commits || [[ -n "$label" ]]; do
         [[ "$label" == "#"* ]] && continue
         [[ -z "$label" ]] && continue
         PROFILE_LABELS+=("$label")
         PROFILE_EMAILS+=("$email")
         PROFILE_DIRS+=("$dir")
         PROFILE_PROVIDERS+=("${provider:-github.com}")
+        PROFILE_SIGNS+=("${sign_commits:-0}")
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
     done < "$GIDEON_PROFILES_CONF"
 
@@ -414,12 +415,19 @@ cmd_setup() {
             fi
         fi
 
+        # SSH Commit Signing
+        local sign_commits="0"
+        if confirm "Enable Native SSH Commit Signing for this profile (Git 2.34+ required)?" "Y"; then
+            sign_commits="1"
+        fi
+
         # Store profile
         PROFILE_LABELS+=("$label")
         PROFILE_NAMES+=("$name")
         PROFILE_EMAILS+=("$email")
         PROFILE_DIRS+=("$dir")
         PROFILE_PROVIDERS+=("$provider")
+        PROFILE_SIGNS+=("$sign_commits")
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
 
         print_success "Profile '$label' configured: $name <$email>"
@@ -487,7 +495,7 @@ cmd_setup() {
     print_section "Writing Git Configuration"
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         if [[ "$i" -ne "$DEFAULT_PROFILE_INDEX" ]]; then
-            write_profile_gitconfig "${PROFILE_LABELS[$i]}" "${PROFILE_NAMES[$i]}" "${PROFILE_EMAILS[$i]}"
+            write_profile_gitconfig "${PROFILE_LABELS[$i]}" "${PROFILE_NAMES[$i]}" "${PROFILE_EMAILS[$i]}" "${PROFILE_SIGNS[$i]}"
         fi
     done
 
@@ -575,7 +583,7 @@ cmd_run() {
     fi
 
     local found=0
-    while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
+    while IFS=: read -r label email dir provider sign_commits || [[ -n "$label" ]]; do
         if [[ "$label" == "$profile" ]]; then found=1; break; fi
     done < "$GIDEON_PROFILES_CONF"
     
@@ -606,6 +614,101 @@ cmd_run() {
 }
 
 # ------------------------------------------------------------------------------
+# cmd_remove — Surgically remove a single profile
+# ------------------------------------------------------------------------------
+cmd_remove() {
+    detect_os
+    local profile="$1"
+    
+    if [[ -z "$profile" ]]; then
+        print_error "Usage: gideon remove <profile>"
+        return 1
+    fi
+    
+    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
+        print_error "No profiles configured."
+        return 1
+    fi
+    
+    # Check if profile exists
+    local found=0
+    while IFS=: read -r label email dir provider sign_commits || [[ -n "$label" ]]; do
+        if [[ "$label" == "$profile" ]]; then found=1; break; fi
+    done < "$GIDEON_PROFILES_CONF"
+    
+    if [[ "$found" -eq 0 ]]; then
+        print_error "Profile '$profile' not found."
+        return 1
+    fi
+
+    if ! confirm "Are you sure you want to completely remove profile '$profile'?" "n"; then
+        print_info "Cancelled."
+        return 0
+    fi
+    
+    print_step "Removing profile '$profile'..."
+    
+    # 1. Remove from profiles.conf using awk (sed is non-portable across BSD/GNU without weird syntax)
+    local tmp_conf
+    tmp_conf=$(mktemp "${GIDEON_PROFILES_CONF}.tmp.XXXXXX")
+    awk -F: -v prof="$profile" '$1 != prof {print}' "$GIDEON_PROFILES_CONF" > "$tmp_conf"
+    mv "$tmp_conf" "$GIDEON_PROFILES_CONF"
+    
+    # 2. Delete the profile gitconfig
+    local config_file="$GIDEON_PROFILES_DIR/${profile}.gitconfig"
+    if [[ -f "$config_file" ]]; then
+        rm -f "$config_file"
+    fi
+    
+    # 3. Reload in-memory arrays so the writers have the updated state
+    PROFILE_LABELS=()
+    PROFILE_NAMES=()
+    PROFILE_EMAILS=()
+    PROFILE_DIRS=()
+    PROFILE_PROVIDERS=()
+    PROFILE_SIGNS=()
+    PROFILE_COUNT=0
+    
+    while IFS=: read -r label email dir provider sign_commits || [[ -n "$label" ]]; do
+        [[ "$label" == "#"* ]] && continue
+        [[ -z "$label" ]] && continue
+        PROFILE_LABELS+=("$label")
+        PROFILE_EMAILS+=("$email")
+        PROFILE_DIRS+=("$dir")
+        PROFILE_PROVIDERS+=("${provider:-github.com}")
+        PROFILE_SIGNS+=("${sign_commits:-0}")
+        PROFILE_COUNT=$((PROFILE_COUNT + 1))
+    done < "$GIDEON_PROFILES_CONF"
+    
+    # Note: We do not reload PROFILE_NAMES from the conf because we never stored them there!
+    # Wait, write_global_gitconfig relies on PROFILE_NAMES for the default profile...
+    # BUT wait! We deleted the default profile's name/email injection in step 1 of the audit fix!
+    # The default profile only needs the label to set sshCommand! It NO LONGER needs PROFILE_NAMES.
+    
+    # 4. Re-run block generators (idempotent, they will overwrite the global configs without the removed profile)
+    write_global_gitconfig >/dev/null
+    write_ssh_config >/dev/null
+    
+    print_success "Profile '$profile' successfully removed."
+    
+    # Ask about SSH keys
+    local key_file="$HOME/.ssh/id_ed25519_${profile}"
+    if [[ -f "$key_file" ]]; then
+        printf >&2 '\n'
+        print_warning "SSH keys for '$profile' still exist:"
+        print_info "  $key_file"
+        print_info "  $key_file.pub"
+        if confirm "Delete these SSH keys permanently?" "n"; then
+            rm -f "$key_file" "$key_file.pub"
+            print_success "SSH keys deleted."
+        else
+            print_info "Keys kept. You can manually delete them later."
+        fi
+    fi
+}
+
+
+# ------------------------------------------------------------------------------
 # Main — Parse arguments and route to subcommand
 # ------------------------------------------------------------------------------
 main() {
@@ -617,6 +720,7 @@ main() {
         printf >&2 '       gideon status               Show current identity\n'
         printf >&2 '       gideon verify               Test SSH and git config\n'
         printf >&2 '       gideon run <profile> -- <cmd>  Run as identity\n'
+        printf >&2 '       gideon remove <profile>     Remove a specific profile\n'
         printf >&2 '       gideon teardown [--force]   Remove all configurations\n'
         printf >&2 '       gideon guard --install       Install commit guard hook\n'
         printf >&2 '       gideon --help                Full help\n\n'
@@ -656,6 +760,9 @@ main() {
                 return 1
             fi
             cmd_run "$@"
+            ;;
+        remove)
+            cmd_remove "$1"
             ;;
         teardown)
             local force=0

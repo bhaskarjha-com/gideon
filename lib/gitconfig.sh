@@ -185,6 +185,7 @@ build_profile_gitconfig() {
     local label="$1"
     local name="$2"
     local email="$3"
+    local sign_commits="${4:-0}"
 
     cat <<EOF
 ${GIDEON_MANAGED_START} Profile: ${label}
@@ -194,6 +195,21 @@ ${GIDEON_MANAGED_START} Profile: ${label}
 [user]
     name = ${name}
     email = ${email}
+EOF
+
+    if [[ "$sign_commits" == "1" ]]; then
+        cat <<EOF
+    signingkey = ~/.ssh/id_ed25519_${label}.pub
+
+[gpg]
+    format = ssh
+
+[commit]
+    gpgsign = true
+EOF
+    fi
+
+    cat <<EOF
 
 [core]
     sshCommand = ssh -i ~/.ssh/id_ed25519_${label}
@@ -212,10 +228,11 @@ write_profile_gitconfig() {
     local label="$1"
     local name="$2"
     local email="$3"
+    local sign_commits="${4:-0}"
     local profile_path="$GIDEON_PROFILES_DIR/${label}.gitconfig"
 
     local content
-    content=$(build_profile_gitconfig "$label" "$name" "$email")
+    content=$(build_profile_gitconfig "$label" "$name" "$email" "$sign_commits")
 
     if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
         print_info "[DRY RUN] Would create: $profile_path"
@@ -246,7 +263,7 @@ write_profiles_conf() {
     # Write header
     cat > "$GIDEON_PROFILES_CONF" <<EOF
 # gideon profile registry — generated on $(date +%Y-%m-%d)
-# Format: label:email:directory:provider
+# Format: label:email:directory:provider:sign_commits
 # Used by the pre-commit guard hook
 EOF
 
@@ -256,8 +273,9 @@ EOF
         local email="${PROFILE_EMAILS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
         local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
+        local sign_commits="${PROFILE_SIGNS[$i]:-0}"
         
-        printf '%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" >> "$GIDEON_PROFILES_CONF"
+        printf '%s:%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" "$sign_commits" >> "$GIDEON_PROFILES_CONF"
     done
 
     print_success "Created profile registry: $GIDEON_PROFILES_CONF"
