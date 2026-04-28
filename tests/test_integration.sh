@@ -48,8 +48,7 @@ test_integration_ssh_keys_created() {
 
 test_integration_gitconfig_created() {
     assert_file_exists "$HOME/.gitconfig" "global gitconfig exists" &&
-    assert_file_contains "$HOME/.gitconfig" "name = Test Global" "has global name" &&
-    assert_file_contains "$HOME/.gitconfig" "email = global@test.com" "has global email"
+    assert_file_contains "$HOME/.gitconfig" "useConfigOnly = true" "has useConfigOnly"
 }
 
 test_integration_includeif_correct() {
@@ -83,8 +82,8 @@ test_integration_profiles_conf_created() {
 test_integration_gitconfig_parseable() {
     # Use git config --file to verify the generated config is valid
     local result
-    result=$(git config --file "$HOME/.gitconfig" user.email 2>/dev/null || echo "PARSE_ERROR")
-    assert_equals "global@test.com" "$result" "git can parse global email"
+    result=$(git config --file "$HOME/.gitconfig" user.useConfigOnly 2>/dev/null || echo "PARSE_ERROR")
+    assert_equals "true" "$result" "git can parse useConfigOnly"
 }
 
 test_integration_profile_gitconfig_parseable() {

@@ -22,9 +22,9 @@ test_global_block_has_user() {
     local block
     block=$(build_global_gitconfig_block)
 
-    assert_contains "$block" "name = Test User" "has default name" &&
-    assert_contains "$block" "name = Test User" "has default name" &&
-    assert_contains "$block" "email = global@test.com" "has default email"
+    # We intentionally do not assert name and email here anymore, as they were removed
+    # to enforce useConfigOnly. We just verify the block doesn't crash.
+    assert_contains "$block" "[user]" "has user block"
 }
 
 test_global_block_has_useconfigonly() {

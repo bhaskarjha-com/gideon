@@ -32,8 +32,6 @@ ${GIDEON_MANAGED_START}
 # Everything outside these markers is preserved.
 
 [user]
-    name = ${default_name}
-    email = ${default_email}
     useConfigOnly = true
 
 [core]
@@ -131,12 +129,33 @@ write_global_gitconfig() {
         tmp_file=$(mktemp "${gitconfig}.tmp.XXXXXX")
         export MANAGED_BLOCK="$managed_block"
         awk '
+            BEGIN { in_block=0; buffer=""; written=0 }
             /\[gideon:managed:start\]/ {
-                if (!written) { print ENVIRON["MANAGED_BLOCK"]; written=1 }
-                skip=1; next
+                if (!written) {
+                    in_block=1
+                    buffer = $0 "\n"
+                    next
+                }
             }
-            /\[gideon:managed:end\]/   { skip=0; next }
-            !skip                      { print }
+            in_block {
+                buffer = buffer $0 "\n"
+                if (/\[gideon:managed:end\]/) {
+                    print ENVIRON["MANAGED_BLOCK"]
+                    in_block=0
+                    written=1
+                    buffer=""
+                }
+                next
+            }
+            !in_block { print }
+            END {
+                if (in_block) {
+                    printf "%s", buffer
+                }
+                if (!written) {
+                    print "\n" ENVIRON["MANAGED_BLOCK"]
+                }
+            }
         ' "$gitconfig" > "$tmp_file"
 
         mv "$tmp_file" "$gitconfig"

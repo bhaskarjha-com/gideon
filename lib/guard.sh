@@ -107,6 +107,23 @@ if [[ "$actual_email" != "$expected_email" ]]; then
     exit 1
 fi
 
+# --- Pass-through to local repository hook ---
+# If the repo has its own pre-commit hook (e.g., Husky, Lefthook), we MUST run it
+local_hooks_path=$(git config --local core.hooksPath 2>/dev/null || echo ".git/hooks")
+
+# Resolve absolute path for local hook
+if [[ "$local_hooks_path" != /* ]]; then
+    local_hooks_path="$current_dir/$local_hooks_path"
+fi
+
+if [[ -x "$local_hooks_path/pre-commit" ]]; then
+    "$local_hooks_path/pre-commit" "$@"
+    exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        exit $exit_code
+    fi
+fi
+
 exit 0
 HOOK_SCRIPT
 

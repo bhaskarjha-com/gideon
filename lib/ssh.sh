@@ -161,9 +161,26 @@ write_ssh_config() {
         tmp_file=$(mktemp "${ssh_config}.tmp.XXXXXX")
 
         awk '
-            /\[gideon:managed:start\]/ {skip=1; next}
-            /\[gideon:managed:end\]/   {skip=0; next}
-            !skip                      {print}
+            BEGIN { in_block=0; buffer="" }
+            /\[gideon:managed:start\]/ {
+                in_block=1
+                buffer = $0 "\n"
+                next
+            }
+            in_block {
+                buffer = buffer $0 "\n"
+                if (/\[gideon:managed:end\]/) {
+                    in_block=0
+                    buffer=""
+                }
+                next
+            }
+            !in_block { print }
+            END {
+                if (in_block) {
+                    printf "%s", buffer
+                }
+            }
         ' "$ssh_config" > "$tmp_file"
 
         mv "$tmp_file" "$ssh_config"
