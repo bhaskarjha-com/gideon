@@ -19,11 +19,11 @@ render_blueprint_dashboard() {
 
     local i
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        local label="${PROFILE_LABELS[$i]}"
-        local name="${PROFILE_NAMES[$i]}"
-        local email="${PROFILE_EMAILS[$i]}"
-        local dir="${PROFILE_DIRS[$i]}"
-        local key="${PROFILE_KEYS[$i]}"
+        local label="${PROFILE_LABELS[i]}"
+        local name="${PROFILE_NAMES[i]}"
+        local email="${PROFILE_EMAILS[i]}"
+        local dir="${PROFILE_DIRS[i]}"
+        local key="${PROFILE_KEYS[i]}"
         
         local key_status="(Will Generate)"
         if [[ -f "$key" ]]; then
@@ -51,27 +51,27 @@ render_blueprint_dashboard() {
 # ------------------------------------------------------------------------------
 prompt_edit_profile() {
     local i="$1"
-    local label="${PROFILE_LABELS[$i]}"
+    local label="${PROFILE_LABELS[i]}"
     
     printf >&2 '\n  ─── Editing Profile: %b%s%b ───\n' "$BOLD" "$label" "$RESET"
     
     # Name
-    ask "Full Name" "${PROFILE_NAMES[$i]}"
-    if [[ -n "$REPLY" ]]; then PROFILE_NAMES[$i]="$REPLY"; fi
+    ask "Full Name" "${PROFILE_NAMES[i]}"
+    if [[ -n "$REPLY" ]]; then PROFILE_NAMES[i]="$REPLY"; fi
     
     # Email
-    ask "Email Address" "${PROFILE_EMAILS[$i]}"
-    if [[ -n "$REPLY" ]]; then PROFILE_EMAILS[$i]="$REPLY"; fi
+    ask "Email Address" "${PROFILE_EMAILS[i]}"
+    if [[ -n "$REPLY" ]]; then PROFILE_EMAILS[i]="$REPLY"; fi
     
     # Directory (skip for global)
     if [[ "$i" -ne 0 ]]; then
-        ask "Directory (e.g. ~/work)" "${PROFILE_DIRS[$i]}"
-        if [[ -n "$REPLY" ]]; then PROFILE_DIRS[$i]=$(normalize_path "$REPLY"); fi
+        ask "Directory (e.g. ~/work)" "${PROFILE_DIRS[i]}"
+        if [[ -n "$REPLY" ]]; then PROFILE_DIRS[i]=$(normalize_path "$REPLY"); fi
     fi
     
     # Key
-    ask "SSH Key Path" "${PROFILE_KEYS[$i]}"
-    if [[ -n "$REPLY" ]]; then PROFILE_KEYS[$i]=$(normalize_path "$REPLY"); fi
+    ask "SSH Key Path" "${PROFILE_KEYS[i]}"
+    if [[ -n "$REPLY" ]]; then PROFILE_KEYS[i]=$(normalize_path "$REPLY"); fi
 }
 
 # ------------------------------------------------------------------------------
@@ -81,7 +81,8 @@ prompt_add_profile() {
     printf >&2 '\n  ─── Adding New Profile ───\n'
     
     ask_required "Profile Label (e.g. oss, client)"
-    local label=$(to_lower "$REPLY")
+    local label
+    label=$(to_lower \"$REPLY\")
     
     while ! validate_label "$label" || array_contains "$label" "${PROFILE_LABELS[@]+"${PROFILE_LABELS[@]}"}"; do
         print_warning "Invalid or duplicate label."
@@ -89,26 +90,26 @@ prompt_add_profile() {
         label=$(to_lower "$REPLY")
     done
     
-    PROFILE_LABELS[$PROFILE_COUNT]="$label"
+    PROFILE_LABELS[PROFILE_COUNT]="$label"
     
     # Default name to global
     local def_name="${PROFILE_NAMES[0]}"
     ask "Full Name" "$def_name"
-    PROFILE_NAMES[$PROFILE_COUNT]="$REPLY"
+    PROFILE_NAMES[PROFILE_COUNT]="$REPLY"
     
     ask "Email Address" ""
-    PROFILE_EMAILS[$PROFILE_COUNT]="$REPLY"
+    PROFILE_EMAILS[PROFILE_COUNT]="$REPLY"
     
     local def_dir="$HOME/$label"
     ask "Directory" "$def_dir"
-    PROFILE_DIRS[$PROFILE_COUNT]=$(normalize_path "$REPLY")
+    PROFILE_DIRS[PROFILE_COUNT]=$(normalize_path "$REPLY")
     
     local def_key="$HOME/.ssh/id_ed25519_${label}"
     ask "SSH Key Path" "$def_key"
-    PROFILE_KEYS[$PROFILE_COUNT]=$(normalize_path "$REPLY")
+    PROFILE_KEYS[PROFILE_COUNT]=$(normalize_path "$REPLY")
     
-    PROFILE_PROVIDERS[$PROFILE_COUNT]="github.com"
-    PROFILE_SIGNS[$PROFILE_COUNT]="${GIDEON_DEFAULT_SIGN:-0}"
+    PROFILE_PROVIDERS[PROFILE_COUNT]="github.com"
+    PROFILE_SIGNS[PROFILE_COUNT]="${GIDEON_DEFAULT_SIGN:-0}"
     
     PROFILE_COUNT=$((PROFILE_COUNT + 1))
 }
@@ -123,13 +124,13 @@ prompt_security() {
         export GIDEON_DEFAULT_SIGN=1
         local i
         for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-            PROFILE_SIGNS[$i]=1
+            PROFILE_SIGNS[i]=1
         done
     else
         export GIDEON_DEFAULT_SIGN=0
         local i
         for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-            PROFILE_SIGNS[$i]=0
+            PROFILE_SIGNS[i]=0
         done
     fi
     
@@ -153,20 +154,21 @@ execute_blueprint() {
     print_section "Generating SSH Keys"
     local i
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        local key_path="${PROFILE_KEYS[$i]}"
+        local key_path="${PROFILE_KEYS[i]}"
         
         if [[ -f "$key_path" ]]; then
             print_info "Using existing key: $key_path"
             continue
         fi
         
-        generate_ssh_key "${PROFILE_LABELS[$i]}" "${PROFILE_EMAILS[$i]}" "$key_path"
+        generate_ssh_key "${PROFILE_LABELS[i]}" "${PROFILE_EMAILS[i]}" "$key_path"
+        # shellcheck disable=SC2181
         if [[ $? -ne 0 ]] && [[ "$key_path" == *"_sk_"* ]]; then
             print_warning "FIDO2 Hardware Key generation failed."
-            if confirm "Fallback to standard software SSH key for '${PROFILE_LABELS[$i]}'?" "y"; then
-                key_path="$HOME/.ssh/id_ed25519_${PROFILE_LABELS[$i]}"
-                PROFILE_KEYS[$i]="$key_path"
-                generate_ssh_key "${PROFILE_LABELS[$i]}" "${PROFILE_EMAILS[$i]}" "$key_path"
+            if confirm "Fallback to standard software SSH key for '${PROFILE_LABELS[i]}'?" "y"; then
+                key_path="$HOME/.ssh/id_ed25519_${PROFILE_LABELS[i]}"
+                PROFILE_KEYS[i]="$key_path"
+                generate_ssh_key "${PROFILE_LABELS[i]}" "${PROFILE_EMAILS[i]}" "$key_path"
             else
                 print_error "Setup aborted due to FIDO2 key generation failure."
                 exit 1
@@ -178,7 +180,7 @@ execute_blueprint() {
     print_section "Writing Git Configuration"
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         if [[ "$i" -ne "$DEFAULT_PROFILE_INDEX" ]]; then
-            write_profile_gitconfig "${PROFILE_LABELS[$i]}" "${PROFILE_NAMES[$i]}" "${PROFILE_EMAILS[$i]}" "${PROFILE_SIGNS[$i]}" "${PROFILE_KEYS[$i]}"
+            write_profile_gitconfig "${PROFILE_LABELS[i]}" "${PROFILE_NAMES[i]}" "${PROFILE_EMAILS[i]}" "${PROFILE_SIGNS[i]}" "${PROFILE_KEYS[i]}"
         fi
     done
 
@@ -223,8 +225,8 @@ interactive_setup_wizard() {
                 local valid=1
                 local i
                 for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-                    if [[ -z "${PROFILE_NAMES[$i]}" ]] || [[ -z "${PROFILE_EMAILS[$i]}" ]]; then
-                        print_error "Profile '${PROFILE_LABELS[$i]}' is missing a name or email!"
+                    if [[ -z "${PROFILE_NAMES[i]}" ]] || [[ -z "${PROFILE_EMAILS[i]}" ]]; then
+                        print_error "Profile '${PROFILE_LABELS[i]}' is missing a name or email!"
                         valid=0
                         sleep 2
                         break
@@ -318,7 +320,7 @@ cmd_profile() {
             local idx=-1
             local i
             for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-                if [[ "${PROFILE_LABELS[$i]}" == "$label" ]]; then
+                if [[ "${PROFILE_LABELS[i]}" == "$label" ]]; then
                     idx=$i
                     break
                 fi
@@ -332,26 +334,26 @@ cmd_profile() {
             if [[ "$idx" -eq -1 ]]; then
                 idx=$PROFILE_COUNT
                 PROFILE_COUNT=$((PROFILE_COUNT + 1))
-                PROFILE_LABELS[$idx]="$label"
-                PROFILE_NAMES[$idx]="${PROFILE_NAMES[0]}" # default to global name
-                PROFILE_EMAILS[$idx]=""
-                PROFILE_DIRS[$idx]="$HOME/$label"
-                PROFILE_PROVIDERS[$idx]="github.com"
-                PROFILE_SIGNS[$idx]="${GIDEON_DEFAULT_SIGN:-0}"
-                PROFILE_KEYS[$idx]="$HOME/.ssh/id_ed25519_${label}"
+                PROFILE_LABELS[idx]="$label"
+                PROFILE_NAMES[idx]="${PROFILE_NAMES[0]}" # default to global name
+                PROFILE_EMAILS[idx]=""
+                PROFILE_DIRS[idx]="$HOME/$label"
+                PROFILE_PROVIDERS[idx]="github.com"
+                PROFILE_SIGNS[idx]="${GIDEON_DEFAULT_SIGN:-0}"
+                PROFILE_KEYS[idx]="$HOME/.ssh/id_ed25519_${label}"
             fi
 
             # Parse flags
             while [[ $# -gt 0 ]]; do
                 case "$1" in
-                    --name=*) PROFILE_NAMES[$idx]="${1#*=}" ;;
-                    --email=*) PROFILE_EMAILS[$idx]="${1#*=}" ;;
-                    --dir=*) PROFILE_DIRS[$idx]=$(normalize_path "${1#*=}") ;;
-                    --provider=*) PROFILE_PROVIDERS[$idx]="${1#*=}" ;;
-                    --key=*) PROFILE_KEYS[$idx]=$(normalize_path "${1#*=}") ;;
-                    --fido2) PROFILE_KEYS[$idx]="$HOME/.ssh/id_ed25519_sk_${label}" ;;
-                    --sign) PROFILE_SIGNS[$idx]="1" ;;
-                    --no-sign) PROFILE_SIGNS[$idx]="0" ;;
+                    --name=*) PROFILE_NAMES[idx]="${1#*=}" ;;
+                    --email=*) PROFILE_EMAILS[idx]="${1#*=}" ;;
+                    --dir=*) PROFILE_DIRS[idx]=$(normalize_path "${1#*=}") ;;
+                    --provider=*) PROFILE_PROVIDERS[idx]="${1#*=}" ;;
+                    --key=*) PROFILE_KEYS[idx]=$(normalize_path "${1#*=}") ;;
+                    --fido2) PROFILE_KEYS[idx]="$HOME/.ssh/id_ed25519_sk_${label}" ;;
+                    --sign) PROFILE_SIGNS[idx]="1" ;;
+                    --no-sign) PROFILE_SIGNS[idx]="0" ;;
                     *)
                         print_error "Unknown flag: $1"
                         exit 1
@@ -361,10 +363,10 @@ cmd_profile() {
             done
 
             # Validation
-            if [[ -z "${PROFILE_EMAILS[$idx]}" ]]; then
+            if [[ -z "${PROFILE_EMAILS[idx]}" ]]; then
                 if [[ -t 1 ]]; then
                     ask_required "Email Address for $label"
-                    PROFILE_EMAILS[$idx]="$REPLY"
+                    PROFILE_EMAILS[idx]="$REPLY"
                 else
                     print_error "--email is required in headless mode."
                     exit 1
@@ -377,7 +379,7 @@ cmd_profile() {
             local idx=-1
             local i
             for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-                if [[ "${PROFILE_LABELS[$i]}" == "$label" ]]; then
+                if [[ "${PROFILE_LABELS[i]}" == "$label" ]]; then
                     idx=$i
                     break
                 fi

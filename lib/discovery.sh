@@ -107,15 +107,22 @@ generate_initial_blueprint() {
     discover_global_git_identity
 
     # Initialize Global Profile (Index 0)
+    # shellcheck disable=SC2034
     PROFILE_LABELS[0]="global"
+    # shellcheck disable=SC2034
     PROFILE_NAMES[0]="${DISCOVERED_GLOBAL_NAME:-}"
+    # shellcheck disable=SC2034
     PROFILE_EMAILS[0]="${DISCOVERED_GLOBAL_EMAIL:-}"
+    # shellcheck disable=SC2034
     PROFILE_DIRS[0]=""
+    # shellcheck disable=SC2034
     PROFILE_PROVIDERS[0]="github.com"
+    # shellcheck disable=SC2034
     PROFILE_SIGNS[0]="0"
     
     local global_key
     global_key=$(discover_ssh_key_for_label "global")
+    # shellcheck disable=SC2034
     PROFILE_KEYS[0]="${global_key:-$HOME/.ssh/id_ed25519_global}"
     
     PROFILE_COUNT=1
@@ -124,15 +131,22 @@ generate_initial_blueprint() {
     local work_dir
     work_dir=$(discover_workspace_dir "work")
     if [[ -n "$work_dir" ]]; then
+        # shellcheck disable=SC2034
         PROFILE_LABELS[1]="work"
+        # shellcheck disable=SC2034
         PROFILE_NAMES[1]="${DISCOVERED_GLOBAL_NAME:-}"
+        # shellcheck disable=SC2034
         PROFILE_EMAILS[1]="" # User must fill this in
+        # shellcheck disable=SC2034
         PROFILE_DIRS[1]="$work_dir"
+        # shellcheck disable=SC2034
         PROFILE_PROVIDERS[1]="github.com"
+        # shellcheck disable=SC2034
         PROFILE_SIGNS[1]="0"
         
         local work_key
         work_key=$(discover_ssh_key_for_label "work")
+        # shellcheck disable=SC2034
         PROFILE_KEYS[1]="${work_key:-$HOME/.ssh/id_ed25519_work}"
         
         PROFILE_COUNT=2

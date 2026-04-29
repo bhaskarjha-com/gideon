@@ -413,11 +413,17 @@ cmd_remove() {
     fi
     
     # 3. Reload in-memory arrays so the writers have the updated state
+    # shellcheck disable=SC2034
     PROFILE_LABELS=()
+    # shellcheck disable=SC2034
     PROFILE_NAMES=()
+    # shellcheck disable=SC2034
     PROFILE_EMAILS=()
+    # shellcheck disable=SC2034
     PROFILE_DIRS=()
+    # shellcheck disable=SC2034
     PROFILE_PROVIDERS=()
+    # shellcheck disable=SC2034
     PROFILE_SIGNS=()
     PROFILE_COUNT=0
     

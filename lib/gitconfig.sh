@@ -21,8 +21,6 @@ build_global_gitconfig_block() {
     gitdir_kw=$(get_gitdir_keyword)
 
     local default_label="${PROFILE_LABELS[$DEFAULT_PROFILE_INDEX]}"
-    local default_name="${PROFILE_NAMES[$DEFAULT_PROFILE_INDEX]}"
-    local default_email="${PROFILE_EMAILS[$DEFAULT_PROFILE_INDEX]}"
 
     # Start with header and default user
     cat <<EOF
