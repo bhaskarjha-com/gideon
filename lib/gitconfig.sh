@@ -35,11 +35,29 @@ ${GIDEON_MANAGED_START}
     useConfigOnly = true
 
 [core]
-    sshCommand = ssh -i ~/.ssh/id_ed25519_${default_label}
+    sshCommand = ssh -i ${PROFILE_KEYS[$DEFAULT_PROFILE_INDEX]:-~/.ssh/id_ed25519_${default_label}}
 
 [init]
     defaultBranch = main
 EOF
+
+    # Add OS-native Credential Helper
+    local cred_helper=""
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        cred_helper="osxkeychain"
+    elif [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
+        cred_helper="manager"
+    elif [[ "$OSTYPE" == "linux"* ]]; then
+        cred_helper="cache --timeout=3600"
+    fi
+
+    if [[ -n "$cred_helper" ]]; then
+        cat <<EOF
+
+[credential]
+    helper = ${cred_helper}
+EOF
+    fi
 
     # Add safe.directory for each non-default profile (solves VirtualBox/WSL dubious ownership)
     local has_safe=0
@@ -186,6 +204,7 @@ build_profile_gitconfig() {
     local name="$2"
     local email="$3"
     local sign_commits="${4:-0}"
+    local key_path="${5:-~/.ssh/id_ed25519_${label}}"
 
     cat <<EOF
 ${GIDEON_MANAGED_START} Profile: ${label}
@@ -199,7 +218,7 @@ EOF
 
     if [[ "$sign_commits" == "1" ]]; then
         cat <<EOF
-    signingkey = ~/.ssh/id_ed25519_${label}.pub
+    signingkey = ${key_path}.pub
 
 [gpg]
     format = ssh
@@ -212,7 +231,7 @@ EOF
     cat <<EOF
 
 [core]
-    sshCommand = ssh -i ~/.ssh/id_ed25519_${label}
+    sshCommand = ssh -i ${key_path}
 ${GIDEON_MANAGED_END} Profile: ${label}
 EOF
 }
@@ -229,10 +248,11 @@ write_profile_gitconfig() {
     local name="$2"
     local email="$3"
     local sign_commits="${4:-0}"
+    local key_path="${5:-~/.ssh/id_ed25519_${label}}"
     local profile_path="$GIDEON_PROFILES_DIR/${label}.gitconfig"
 
     local content
-    content=$(build_profile_gitconfig "$label" "$name" "$email" "$sign_commits")
+    content=$(build_profile_gitconfig "$label" "$name" "$email" "$sign_commits" "$key_path")
 
     if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
         print_info "[DRY RUN] Would create: $profile_path"
@@ -263,7 +283,7 @@ write_profiles_conf() {
     # Write header
     cat > "$GIDEON_PROFILES_CONF" <<EOF
 # gideon profile registry — generated on $(date +%Y-%m-%d)
-# Format: label:email:directory:provider:sign_commits
+# Format: label:email:directory:provider:sign_commits:key_path
 # Used by the pre-commit guard hook
 EOF
 
@@ -274,8 +294,9 @@ EOF
         local dir="${PROFILE_DIRS[$i]}"
         local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
         local sign_commits="${PROFILE_SIGNS[$i]:-0}"
+        local key_path="${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}"
         
-        printf '%s:%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" "$sign_commits" >> "$GIDEON_PROFILES_CONF"
+        printf '%s:%s:%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" "$sign_commits" "$key_path" >> "$GIDEON_PROFILES_CONF"
     done
 
     print_success "Created profile registry: $GIDEON_PROFILES_CONF"

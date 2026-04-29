@@ -17,7 +17,7 @@
 generate_ssh_key() {
     local label="$1"
     local email="$2"
-    local key_path="$HOME/.ssh/id_ed25519_${label}"
+    local key_path="${3:-$HOME/.ssh/id_ed25519_${label}}"
 
     # Warn if ~/.ssh is on a shared mount
     if is_shared_mount "$HOME/.ssh" 2>/dev/null; then
@@ -73,13 +73,24 @@ generate_ssh_key() {
     # Generate the key
     print_step "Generating SSH key for '$label'..."
 
+    # Check if FIDO2 hardware key was requested based on filename convention
+    local key_type="ed25519"
+    local extra_args=""
+    if [[ "$key_path" == *"_sk_"* ]]; then
+        key_type="ed25519-sk"
+        extra_args="-O resident -O verify-required"
+        print_info "Hardware Security Key detected. Please TOUCH YOUR YUBIKEY when prompted."
+    fi
+
     if [[ "${GIDEON_USE_PASSPHRASE:-0}" -eq 1 ]]; then
         # Prompt user for passphrase interactively
-        ssh-keygen -t ed25519 -C "$email" -f "$key_path"
+        # shellcheck disable=SC2086
+        ssh-keygen -t "$key_type" $extra_args -C "$email" -f "$key_path"
         local status=$?
     else
         # Password-less key
-        ssh-keygen -t ed25519 -C "$email" -f "$key_path" -N "" -q
+        # shellcheck disable=SC2086
+        ssh-keygen -t "$key_type" $extra_args -C "$email" -f "$key_path" -N "" -q
         local status=$?
     fi
 
@@ -103,6 +114,7 @@ generate_ssh_key() {
 build_ssh_host_block() {
     local label="$1"
     local hostname="${2:-github.com}"
+    local key_path="${3:-~/.ssh/id_ed25519_${label}}"
     
     # Extract the main part of the domain (e.g., gitlab.com -> gitlab) for the alias prefix
     local prefix
@@ -113,7 +125,7 @@ ${GIDEON_MANAGED_START} ${label}
 Host ${prefix}-${label}
     HostName ${hostname}
     User git
-    IdentityFile ~/.ssh/id_ed25519_${label}
+    IdentityFile ${key_path}
     IdentitiesOnly yes
     AddKeysToAgent yes
 EOF
@@ -197,8 +209,9 @@ write_ssh_config() {
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         local label="${PROFILE_LABELS[$i]}"
         local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
+        local key_path="${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}"
         printf '\n' >> "$ssh_config"
-        build_ssh_host_block "$label" "$provider" >> "$ssh_config"
+        build_ssh_host_block "$label" "$provider" "$key_path" >> "$ssh_config"
     done
 
     # Ensure correct permissions
@@ -219,7 +232,7 @@ display_public_keys() {
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
-        local pubkey="$HOME/.ssh/id_ed25519_${label}.pub"
+        local pubkey="${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}.pub"
 
         if [[ -f "$pubkey" ]]; then
             print_key_box "$label" "$email" "$pubkey"
