@@ -65,7 +65,7 @@ GIDEON_SCRIPT_DIR=$(resolve_script_dir | tr -d '\r')
 # ------------------------------------------------------------------------------
 gideon_source() {
     # shellcheck disable=SC1090
-    source <(tr -d '\r' < "$1")
+    eval "$(tr -d '\r' < "$1")"
 }
 gideon_source "$GIDEON_SCRIPT_DIR/lib/core.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/platform.sh"
