@@ -51,7 +51,7 @@ test_integration_ssh_keys_created() {
 
 test_integration_gitconfig_created() {
     assert_file_exists "$HOME/.gitconfig" "global gitconfig exists" &&
-    assert_file_contains "$HOME/.gitconfig" "useConfigOnly = true" "has useConfigOnly"
+    assert_file_contains "$HOME/.gitconfig" "[include]" "has include block"
 }
 
 test_integration_includeif_correct() {
@@ -85,8 +85,8 @@ test_integration_profiles_conf_created() {
 test_integration_gitconfig_parseable() {
     # Use git config --file to verify the generated config is valid
     local result
-    result=$(git config --file "$HOME/.gitconfig" user.useConfigOnly 2>/dev/null || echo "PARSE_ERROR")
-    assert_equals "true" "$result" "git can parse useConfigOnly"
+    result=$(git config --file "$HOME/.gitconfig" include.path 2>/dev/null || echo "PARSE_ERROR")
+    assert_equals "${GIDEON_PROFILES_DIR}/global.gitconfig" "$result" "git can parse global include"
 }
 
 test_integration_profile_gitconfig_parseable() {

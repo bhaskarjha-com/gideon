@@ -22,37 +22,8 @@ test_global_block_has_user() {
     local block
     block=$(build_global_gitconfig_block)
 
-    # We intentionally do not assert name and email here anymore, as they were removed
-    # to enforce useConfigOnly. We just verify the block doesn't crash.
-    assert_contains "$block" "[user]" "has user block"
-}
-
-test_global_block_has_useconfigonly() {
-    PROFILE_LABELS=("global")
-    PROFILE_NAMES=("Test User")
-    PROFILE_EMAILS=("global@test.com")
-    PROFILE_DIRS=("")
-    PROFILE_COUNT=1
-    DEFAULT_PROFILE_INDEX=0
-
-    local block
-    block=$(build_global_gitconfig_block)
-
-    assert_contains "$block" "useConfigOnly = true" "has useConfigOnly"
-}
-
-test_global_block_has_ssh_command() {
-    PROFILE_LABELS=("global")
-    PROFILE_NAMES=("Test User")
-    PROFILE_EMAILS=("global@test.com")
-    PROFILE_DIRS=("")
-    PROFILE_COUNT=1
-    DEFAULT_PROFILE_INDEX=0
-
-    local block
-    block=$(build_global_gitconfig_block)
-
-    assert_contains "$block" "sshCommand = ssh -i ${HOME}/.ssh/id_ed25519_global" "has sshCommand"
+    assert_contains "$block" "[include]" "has include block"
+    assert_contains "$block" "path = ${GIDEON_PROFILES_DIR}/global.gitconfig" "has global include path"
 }
 
 test_global_block_has_includeif() {
@@ -211,8 +182,6 @@ test_write_profiles_conf() {
 
 printf '\n%btest_gitconfig.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "global block contains default user" test_global_block_has_user
-run_test "global block contains useConfigOnly" test_global_block_has_useconfigonly
-run_test "global block contains sshCommand" test_global_block_has_ssh_command
 run_test "global block has includeIf for profiles" test_global_block_has_includeif
 run_test "global block has safe directories" test_global_block_has_safe_directories
 run_test "includeIf paths have trailing slash" test_global_block_has_trailing_slash

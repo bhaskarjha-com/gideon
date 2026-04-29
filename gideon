@@ -75,6 +75,7 @@ gideon_source "$GIDEON_SCRIPT_DIR/lib/backup.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/ssh.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/gitconfig.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/guard.sh"
+source "$GIDEON_SCRIPT_DIR/lib/doctor.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/verify.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/teardown.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/discovery.sh"
@@ -577,6 +578,14 @@ cmd_prompt() {
 }
 
 # ------------------------------------------------------------------------------
+# cmd_doctor — Run diagnostics
+# ------------------------------------------------------------------------------
+cmd_doctor() {
+    load_profiles
+    run_doctor
+}
+
+# ------------------------------------------------------------------------------
 # Main — Parse arguments and route to subcommand
 # ------------------------------------------------------------------------------
 main() {
@@ -673,6 +682,9 @@ main() {
                     return 1
                     ;;
             esac
+            ;;
+        doctor|status)
+            cmd_doctor "$@"
             ;;
         --help|-h|help)
             show_help

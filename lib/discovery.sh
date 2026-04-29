@@ -14,10 +14,33 @@ discover_global_git_identity() {
     DISCOVERED_GLOBAL_NAME=""
     DISCOVERED_GLOBAL_EMAIL=""
 
-    # We read manually or via git if available
+    # 1. Try to read from git config
     if command -v git >/dev/null 2>&1; then
         DISCOVERED_GLOBAL_NAME=$(git config --global user.name 2>/dev/null || true)
         DISCOVERED_GLOBAL_EMAIL=$(git config --global user.email 2>/dev/null || true)
+    fi
+
+    # 2. If name/email are empty, check if global.gitconfig exists (Gideon fallback)
+    if [[ -z "$DISCOVERED_GLOBAL_NAME" ]] && [[ -f "$HOME/.config/gideon/profiles/global.gitconfig" ]]; then
+        DISCOVERED_GLOBAL_NAME=$(git config --file "$HOME/.config/gideon/profiles/global.gitconfig" user.name 2>/dev/null || true)
+    fi
+    if [[ -z "$DISCOVERED_GLOBAL_EMAIL" ]] && [[ -f "$HOME/.config/gideon/profiles/global.gitconfig" ]]; then
+        DISCOVERED_GLOBAL_EMAIL=$(git config --file "$HOME/.config/gideon/profiles/global.gitconfig" user.email 2>/dev/null || true)
+    fi
+
+    # 3. If email is STILL empty, try to extract it from SSH public keys
+    if [[ -z "$DISCOVERED_GLOBAL_EMAIL" ]]; then
+        local pub_key
+        for pub_key in "$HOME/.ssh/id_ed25519_global.pub" "$HOME/.ssh/id_rsa_global.pub" "$HOME/.ssh/id_ed25519.pub" "$HOME/.ssh/id_rsa.pub"; do
+            if [[ -f "$pub_key" ]]; then
+                local extracted
+                extracted=$(awk '{print $3}' "$pub_key" | grep "@" || true)
+                if [[ -n "$extracted" ]]; then
+                    DISCOVERED_GLOBAL_EMAIL="$extracted"
+                    break
+                fi
+            fi
+        done
     fi
 }
 
@@ -74,6 +97,24 @@ discover_workspace_dir() {
         return
     fi
 
+    # 1. Parse existing ~/.gitconfig for includeIf paths containing the label
+    if [[ -f "$HOME/.gitconfig" ]]; then
+        local extracted
+        extracted=$(grep -i "includeIf.*gitdir:.*${label}" "$HOME/.gitconfig" | head -n1 | sed -E 's/.*gitdir:([^"]+)\/?"].*/\1/' || true)
+        if [[ -n "$extracted" ]] && [[ -d "$extracted" ]]; then
+            echo "$extracted"
+            return
+        fi
+        
+        # Or look for exact match if label is something else
+        extracted=$(grep -i "includeIf.*gitdir" "$HOME/.gitconfig" | grep -i "$label" | head -n1 | sed -E 's/.*gitdir:([^"]+)\/?"].*/\1/' || true)
+        if [[ -n "$extracted" ]] && [[ -d "$extracted" ]]; then
+            echo "$extracted"
+            return
+        fi
+    fi
+
+    # 2. Hardcoded fallback paths
     local potential_dirs=(
         "$HOME/$label"
         "$HOME/dev/$label"

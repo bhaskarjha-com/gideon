@@ -29,11 +29,8 @@ ${GIDEON_MANAGED_START}
 # Do not edit between managed markers — gideon will overwrite on re-run.
 # Everything outside these markers is preserved.
 
-[user]
-    useConfigOnly = true
-
-[core]
-    sshCommand = ssh -i ${PROFILE_KEYS[$DEFAULT_PROFILE_INDEX]:-$HOME/.ssh/id_ed25519_${default_label}}
+[include]
+    path = ${GIDEON_PROFILES_DIR}/${default_label}.gitconfig
 
 [init]
     defaultBranch = main

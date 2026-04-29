@@ -32,8 +32,8 @@ render_blueprint_dashboard() {
             key_status="(Will Generate FIDO2)"
         fi
         
-        local display_name="${name:-<missing>}"
-        local display_email="${email:-<missing>}"
+        local display_name="${name:-(Not Configured)}"
+        local display_email="${email:-(Not Configured)}"
         local display_dir="${dir:-[Global Fallback]}"
         
         printf >&2 '  %b%s) [%s]%b %s <%s>\n' "$BOLD" "$((i+1))" "$label" "$RESET" "$display_name" "$display_email"
