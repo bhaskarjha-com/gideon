@@ -142,11 +142,15 @@ test_integration_gideon_run() {
     
     # Run gideon and capture output, ignoring failures due to set -e
     local raw_output
-    raw_output=$("$gideon_script" run pro -- env 2>&1 || true)
+    raw_output=$(bash "$gideon_script" run pro -- env 2>&1 || true)
     
     output=$(echo "$raw_output" | grep "^GIT_AUTHOR_EMAIL=" || true)
     
+    if [[ "$output" != "GIT_AUTHOR_EMAIL=pro@test.com" ]]; then
+        echo "RAW OUTPUT WAS: $raw_output"
+    fi
     assert_equals "GIT_AUTHOR_EMAIL=pro@test.com" "$output" "gideon run exports correct environment variable"
+
 }
 
 # --- Run ---
