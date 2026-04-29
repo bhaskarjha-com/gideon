@@ -8,7 +8,7 @@
 # ------------------------------------------------------------------------------
 # generate_ssh_key — Generate an Ed25519 SSH key pair for a profile
 #
-# Creates: ~/.ssh/id_ed25519_<label> (private) and .pub (public)
+# Creates: $HOME/.ssh/id_ed25519_<label> (private) and .pub (public)
 # If key exists: prompts user to skip, rename old, or overwrite.
 #
 # Usage: generate_ssh_key "pro" "user@example.com"
@@ -82,16 +82,26 @@ generate_ssh_key() {
         print_info "Hardware Security Key detected. Please TOUCH YOUR YUBIKEY when prompted."
     fi
 
-    if [[ "${GIDEON_USE_PASSPHRASE:-0}" -eq 1 ]]; then
-        # Prompt user for passphrase interactively
+    if [[ "${GIDEON_USE_PASSPHRASE:-0}" -eq 1 ]] || [[ "$key_type" == "ed25519-sk" ]]; then
+        # Prompt user for passphrase or FIDO2 touch interactively
         # shellcheck disable=SC2086
         ssh-keygen -t "$key_type" $extra_args -C "$email" -f "$key_path"
         local status=$?
     else
-        # Password-less key
+        # Password-less key (background with spinner)
         # shellcheck disable=SC2086
-        ssh-keygen -t "$key_type" $extra_args -C "$email" -f "$key_path" -N "" -q
+        ssh-keygen -t "$key_type" $extra_args -C "$email" -f "$key_path" -N "" -q >/dev/null 2>&1 &
+        local pid=$!
+        local spin='-\|/'
+        local i=0
+        while kill -0 $pid 2>/dev/null; do
+            i=$(( (i+1) %4 ))
+            printf "\r  ${BOLD}Generating...${RESET} %s " "${spin:$i:1}" >&2
+            sleep 0.1
+        done
+        wait $pid
         local status=$?
+        printf "\r\033[K" >&2 # Clear the spinner line
     fi
 
     if [[ "$status" -eq 0 ]]; then
@@ -114,7 +124,7 @@ generate_ssh_key() {
 build_ssh_host_block() {
     local label="$1"
     local hostname="${2:-github.com}"
-    local key_path="${3:-~/.ssh/id_ed25519_${label}}"
+    local key_path="${3:-$HOME/.ssh/id_ed25519_${label}}"
     
     # Extract the main part of the domain (e.g., gitlab.com -> gitlab) for the alias prefix
     local prefix
@@ -209,7 +219,7 @@ write_ssh_config() {
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         local label="${PROFILE_LABELS[$i]}"
         local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
-        local key_path="${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}"
+        local key_path="${PROFILE_KEYS[$i]:-$HOME/.ssh/id_ed25519_${label}}"
         printf '\n' >> "$ssh_config"
         build_ssh_host_block "$label" "$provider" "$key_path" >> "$ssh_config"
     done
@@ -232,7 +242,7 @@ display_public_keys() {
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
-        local pubkey="${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}.pub"
+        local pubkey="${PROFILE_KEYS[$i]:-$HOME/.ssh/id_ed25519_${label}}.pub"
 
         if [[ -f "$pubkey" ]]; then
             print_key_box "$label" "$email" "$pubkey"

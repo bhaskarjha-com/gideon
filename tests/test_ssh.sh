@@ -4,9 +4,9 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
-source_gideon_libs
-
 setup_test_home
+
+source_gideon_libs
 detect_os
 
 # --- Tests ---
@@ -17,7 +17,7 @@ test_ssh_host_block_format() {
 
     assert_contains "$block" "Host github-pro" "has Host line" &&
     assert_contains "$block" "HostName github.com" "has HostName" &&
-    assert_contains "$block" "IdentityFile ~/.ssh/id_ed25519_pro" "has IdentityFile" &&
+    assert_contains "$block" "IdentityFile ${HOME}/.ssh/id_ed25519_pro" "has IdentityFile" &&
     assert_contains "$block" "IdentitiesOnly yes" "has IdentitiesOnly" &&
     assert_contains "$block" "[gideon:managed:start] pro" "has start marker" &&
     assert_contains "$block" "[gideon:managed:end] pro" "has end marker"

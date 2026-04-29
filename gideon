@@ -77,6 +77,8 @@ gideon_source "$GIDEON_SCRIPT_DIR/lib/gitconfig.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/guard.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/verify.sh"
 gideon_source "$GIDEON_SCRIPT_DIR/lib/teardown.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/discovery.sh"
+gideon_source "$GIDEON_SCRIPT_DIR/lib/setup.sh"
 
 # ------------------------------------------------------------------------------
 # Signal trap — clean exit on Ctrl+C
@@ -219,18 +221,7 @@ cmd_verify() {
     fi
 
     # Read profiles from registry
-    PROFILE_COUNT=0
-    while IFS=: read -r label email dir provider sign_commits key_path || [[ -n "$label" ]]; do
-        [[ "$label" == "#"* ]] && continue
-        [[ -z "$label" ]] && continue
-        PROFILE_LABELS+=("$label")
-        PROFILE_EMAILS+=("$email")
-        PROFILE_DIRS+=("$dir")
-        PROFILE_PROVIDERS+=("${provider:-github.com}")
-        PROFILE_SIGNS+=("${sign_commits:-0}")
-        PROFILE_KEYS+=("${key_path:-~/.ssh/id_ed25519_${label}}")
-        PROFILE_COUNT=$((PROFILE_COUNT + 1))
-    done < "$GIDEON_PROFILES_CONF"
+    load_profiles
 
     if [[ "$PROFILE_COUNT" -eq 0 ]]; then
         print_error "No profiles found in registry. Run 'gideon setup' first."
@@ -270,11 +261,10 @@ cmd_teardown() {
 }
 
 # ------------------------------------------------------------------------------
-# cmd_setup — Interactive setup wizard
+# cmd_setup — Interactive Blueprint Dashboard / Headless setup
 # ------------------------------------------------------------------------------
 cmd_setup() {
     detect_os
-
     print_header
 
     if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
@@ -296,296 +286,16 @@ cmd_setup() {
         print_warning "Home directory appears to be on a shared folder."
         print_info "SSH keys will be stored on the native filesystem at ~/.ssh"
     fi
-
-    # --- Collect profiles ---
-    print_section "Profile Configuration"
-    print_info "A profile defines a Git identity (name, email, SSH key)."
-    print_info "The first profile will be your default/global identity."
-    printf >&2 '\n'
-
-    # Ask how many profiles
-    ask_count "How many profiles do you need?" 1 10
-    local num_profiles="$REPLY"
-
-    local i
-    for i in $(seq 1 "$num_profiles"); do
-        print_section "Profile $i of $num_profiles"
-
-        # Label
-        if [[ "$i" -eq 1 ]]; then
-            print_info "This is your DEFAULT profile (used when no directory rule matches)."
-            ask "Profile label" "global"
-        else
-            ask_required "Profile label (e.g., pro, work, oss)"
-        fi
-        local label
-        label=$(to_lower "$REPLY")
-
-        # Validate label
-        while ! validate_label "$label"; do
-            print_warning "Label must be lowercase letters, numbers, and hyphens (1-20 chars, starts with letter)."
-            ask_required "Profile label"
-            label=$(to_lower "$REPLY")
-        done
-
-        # Check for duplicate
-        while array_contains "$label" "${PROFILE_LABELS[@]+"${PROFILE_LABELS[@]}"}"; do
-            print_warning "Label '$label' already used. Choose a different one."
-            ask_required "Profile label"
-            label=$(to_lower "$REPLY")
-        done
-
-        # Name
-        local default_name=""
-        if [[ "$i" -eq 1 ]]; then
-            default_name=$(git config --global user.name 2>/dev/null || echo "")
-        fi
-        ask "Full name" "$default_name"
-        local name="$REPLY"
-        if [[ -z "$name" ]]; then
-            ask_required "Full name"
-            name="$REPLY"
-        fi
-
-        # Provider
-        printf >&2 '\n  %bGit Provider%b\n' "$BOLD" "$RESET"
-        printf >&2 '  1) GitHub (github.com)\n'
-        printf >&2 '  2) GitLab (gitlab.com)\n'
-        printf >&2 '  3) Bitbucket (bitbucket.org)\n'
-        printf >&2 '  4) Custom (Self-Hosted)\n'
-        ask "Select provider [1-4]" "1"
-        local provider_choice="$REPLY"
-        local provider="github.com"
-        case "$provider_choice" in
-            2) provider="gitlab.com" ;;
-            3) provider="bitbucket.org" ;;
-            4)
-                ask "Custom domain (e.g., git.company.com)" ""
-                provider="$REPLY"
-                while [[ -z "$provider" ]]; do
-                    ask_required "Custom domain"
-                    provider="$REPLY"
-                done
-                ;;
-        esac
-
-        # Email
-        local default_email=""
-        if [[ "$i" -eq 1 ]]; then
-            default_email=$(git config --global user.email 2>/dev/null || echo "")
-        fi
-        
-        local valid_email=0
-        local email=""
-
-        while [[ "$valid_email" -eq 0 ]]; do
-            ask_email "Email address" "$default_email"
-            email="$REPLY"
-
-            if [[ "$provider" == "github.com" ]] && ! validate_github_noreply_email "$email"; then
-                printf >&2 '\n'
-                print_warning "For privacy, GitHub recommends using your masked noreply email:"
-                print_warning "Format: ID+username@users.noreply.github.com"
-                if confirm "Use this email anyway?" "n"; then
-                    valid_email=1
-                fi
-            else
-                valid_email=1
-            fi
-        done
-
-
-        # Directory (not needed for default profile — it's the fallback)
-        local dir=""
-        if [[ "$i" -gt 1 ]]; then
-            ask_path "Directory for this profile (e.g., ~/dev/work) [Optional]" ""
-            dir="$REPLY"
-            
-            if [[ -z "$dir" ]]; then
-                print_info "No directory provided. This profile will run in Manual Mode (host alias only)."
-            else
-                # Validate no overlap
-                if ! validate_no_overlap "$dir" "${PROFILE_DIRS[@]+"${PROFILE_DIRS[@]}"}"; then
-                    print_warning "Directory '$dir' overlaps with an existing profile."
-                    print_info "Git uses the last matching includeIf, so overlaps can cause confusion."
-                    if ! confirm "Continue anyway?" "n"; then
-                        print_info "Skipping this profile."
-                        continue
-                    fi
-                fi
-            fi
-        fi
-
-        # SSH Commit Signing
-        local sign_commits="0"
-        if confirm "Enable Native SSH Commit Signing for this profile (Git 2.34+ required)?" "Y"; then
-            sign_commits="1"
-        fi
-
-        # SSH Key Path / Generation
-        local key_path=""
-        ask "Path to existing SSH key (Press Enter to generate a new one)" ""
-        if [[ -n "$REPLY" ]]; then
-            key_path=$(normalize_path "$REPLY")
-        else
-            if confirm "Use a FIDO2 Hardware Security Key (e.g., YubiKey) for this profile?" "n"; then
-                key_path="~/.ssh/id_ed25519_sk_${label}"
-            else
-                key_path="~/.ssh/id_ed25519_${label}"
-            fi
-        fi
-
-        # Store profile
-        PROFILE_LABELS+=("$label")
-        PROFILE_NAMES+=("$name")
-        PROFILE_EMAILS+=("$email")
-        PROFILE_DIRS+=("$dir")
-        PROFILE_PROVIDERS+=("$provider")
-        PROFILE_SIGNS+=("$sign_commits")
-        PROFILE_KEYS+=("$key_path")
-        PROFILE_COUNT=$((PROFILE_COUNT + 1))
-
-        print_success "Profile '$label' configured: $name <$email>"
-    done
-
-    # Global Passphrase
-    printf >&2 '\n'
-    print_section "SSH Security"
-    print_info "Gideon can generate password-less SSH keys (convenient) or"
-    print_info "protect them with a passphrase (secure). If you choose secure,"
-    print_info "ssh-keygen will interactively prompt you for a passphrase."
-    if confirm "Protect new SSH keys with a passphrase?" "n"; then
-        export GIDEON_USE_PASSPHRASE=1
+    
+    # Check if TTY
+    if [[ ! -t 1 ]]; then
+        print_error "Headless setup via args is not yet fully implemented in this block."
+        print_error "Use 'gideon profile add' for headless mode."
+        return 1
     fi
 
-    # --- Review plan ---
-    print_section "Setup Plan"
-    printf >&2 '  The following will be created/updated:\n\n'
-
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        local label="${PROFILE_LABELS[$i]}"
-        local name="${PROFILE_NAMES[$i]}"
-        local email="${PROFILE_EMAILS[$i]}"
-        local dir="${PROFILE_DIRS[$i]}"
-        local provider="${PROFILE_PROVIDERS[$i]}"
-
-        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
-            printf >&2 '  %b%s%b (default)\n' "$BOLD" "$label" "$RESET"
-        else
-            printf >&2 '  %b%s%b → %s\n' "$BOLD" "$label" "$RESET" "${dir:-[Manual Mode]}"
-        fi
-        printf >&2 '    Name:     %s\n' "$name"
-        printf >&2 '    Email:    %s\n' "$email"
-        printf >&2 '    Provider: %s\n' "$provider"
-        printf >&2 '    Key:      %s\n\n' "${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}"
-    done
-
-    printf >&2 '  %bFiles:%b\n' "$BOLD" "$RESET"
-    printf >&2 '    %s SSH key pairs\n' "$PROFILE_COUNT"
-    printf >&2 '    ~/.gitconfig (global config with includeIf rules)\n'
-    printf >&2 '    %d profile config(s) in %s\n' "$((PROFILE_COUNT - 1))" "$GIDEON_PROFILES_DIR"
-    printf >&2 '    ~/.ssh/config (host aliases for cloning)\n'
-    printf >&2 '\n'
-
-    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
-        print_info "DRY RUN — showing what would be generated:"
-        printf >&2 '\n'
-    else
-        if ! confirm "Proceed with setup?" "y"; then
-            print_info "Setup cancelled. No changes made."
-            return 0
-        fi
-    fi
-
-    # --- Execute setup ---
-    ensure_dirs
-
-    # 1. Generate SSH keys
-    print_section "Generating SSH Keys"
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        local key_path="${PROFILE_KEYS[$i]}"
-        # If user provided a custom path and it exists, or if it was generated before, skip generation if not _sk_
-        # Actually, let generate_ssh_key handle the "file exists" prompt, but we skip if they specifically entered a custom path in the prompt
-        # Wait, how do we know if it was custom? If it doesn't match the default pattern.
-        # But generate_ssh_key already checks if -f exists and prompts. We just pass the key_path.
-        generate_ssh_key "${PROFILE_LABELS[$i]}" "${PROFILE_EMAILS[$i]}" "$key_path"
-        if [[ $? -ne 0 ]] && [[ "$key_path" == *"_sk_"* ]]; then
-            print_warning "FIDO2 Hardware Key generation failed."
-            print_info "This usually means libfido2 is missing from your OS, or no token was touched."
-            if confirm "Fallback to standard software SSH key for '${PROFILE_LABELS[$i]}'?" "y"; then
-                key_path="$HOME/.ssh/id_ed25519_${PROFILE_LABELS[$i]}"
-                PROFILE_KEYS[$i]="$key_path"
-                generate_ssh_key "${PROFILE_LABELS[$i]}" "${PROFILE_EMAILS[$i]}" "$key_path"
-            else
-                print_error "Setup aborted due to FIDO2 key generation failure."
-                return 1
-            fi
-        fi
-    done
-
-    # 2. Write profile gitconfigs (for non-default profiles)
-    print_section "Writing Git Configuration"
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        if [[ "$i" -ne "$DEFAULT_PROFILE_INDEX" ]]; then
-            write_profile_gitconfig "${PROFILE_LABELS[$i]}" "${PROFILE_NAMES[$i]}" "${PROFILE_EMAILS[$i]}" "${PROFILE_SIGNS[$i]}" "${PROFILE_KEYS[$i]}"
-        fi
-    done
-
-    # 3. Write global gitconfig
-    write_global_gitconfig
-
-    # 4. Write SSH config
-    print_section "Updating SSH Configuration"
-    write_ssh_config
-
-    # 5. Write profiles registry
-    write_profiles_conf
-
-    # 6. Display public keys
-    if [[ "$GIDEON_DRY_RUN" -eq 0 ]]; then
-        display_public_keys
-    fi
-
-    # 7. Offer guard hook
-    if [[ "$GIDEON_DRY_RUN" -eq 0 ]]; then
-        print_section "Identity Guard Hook"
-        print_info "gideon can install a pre-commit hook that warns if you're"
-        print_info "about to commit with the wrong identity for a directory."
-        printf >&2 '\n'
-
-        if confirm "Install the identity guard hook?" "y"; then
-            install_guard
-        else
-            print_info "Skipped. You can install later with: gideon guard --install"
-        fi
-    fi
-
-    # 8. Show next steps
-    print_section "Next Steps"
-    printf >&2 '  %b1.%b Add your public keys to GitHub/GitLab (see above)\n' "$BOLD" "$RESET"
-    printf >&2 '     → %bhttps://github.com/settings/ssh/new%b\n\n' "$CYAN" "$RESET"
-
-    printf >&2 '  %b2.%b Test SSH connectivity:\n' "$BOLD" "$RESET"
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        printf >&2 '     ssh -T git@github-%s\n' "${PROFILE_LABELS[$i]}"
-    done
-    printf >&2 '\n'
-
-    printf >&2 '  %b3.%b Magical Clone! Just cd into your profile directory and clone normally:\n' "$BOLD" "$RESET"
-    printf >&2 '     cd /path/to/profile/dir\n'
-    printf >&2 '     git clone git@github.com:username/repo.git\n'
-    printf >&2 '\n'
-
-    printf >&2 '  %b4.%b Verify your setup:\n' "$BOLD" "$RESET"
-    printf >&2 '     ./gideon verify\n\n'
-
-    # SSH agent advice
-    print_section "SSH Agent Setup"
-    get_ssh_agent_advice
-    printf >&2 '\n'
-
-    print_success "Setup complete! You're ready to go."
-    printf >&2 '\n'
+    # Launch the interactive menu
+    interactive_setup_wizard
 }
 
 # ------------------------------------------------------------------------------
@@ -619,7 +329,7 @@ cmd_run() {
     while IFS=: read -r label email dir provider sign_commits key_path || [[ -n "$label" ]]; do
         if [[ "$label" == "$profile" ]]; then
             found=1
-            found_key_path="${key_path:-~/.ssh/id_ed25519_${label}}"
+            found_key_path="${key_path:-$HOME/.ssh/id_ed25519_${label}}"
             break
         fi
     done < "$GIDEON_PROFILES_CONF"
@@ -673,7 +383,7 @@ cmd_remove() {
     while IFS=: read -r label email dir provider sign_commits key_path || [[ -n "$label" ]]; do
         if [[ "$label" == "$profile" ]]; then
             found=1
-            found_key_path="${key_path:-~/.ssh/id_ed25519_${label}}"
+            found_key_path="${key_path:-$HOME/.ssh/id_ed25519_${label}}"
             break
         fi
     done < "$GIDEON_PROFILES_CONF"
@@ -719,7 +429,7 @@ cmd_remove() {
         PROFILE_DIRS+=("$dir")
         PROFILE_PROVIDERS+=("${provider:-github.com}")
         PROFILE_SIGNS+=("${sign_commits:-0}")
-        PROFILE_KEYS+=("${key_path:-~/.ssh/id_ed25519_${label}}")
+        PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
     done < "$GIDEON_PROFILES_CONF"
     
@@ -916,7 +626,10 @@ main() {
             cmd_run "$@"
             ;;
         remove)
-            cmd_remove "$1"
+            cmd_profile remove "$1"
+            ;;
+        profile)
+            cmd_profile "$@"
             ;;
         init)
             cmd_init "$@"

@@ -35,7 +35,7 @@ ${GIDEON_MANAGED_START}
     useConfigOnly = true
 
 [core]
-    sshCommand = ssh -i ${PROFILE_KEYS[$DEFAULT_PROFILE_INDEX]:-~/.ssh/id_ed25519_${default_label}}
+    sshCommand = ssh -i ${PROFILE_KEYS[$DEFAULT_PROFILE_INDEX]:-$HOME/.ssh/id_ed25519_${default_label}}
 
 [init]
     defaultBranch = main
@@ -204,7 +204,7 @@ build_profile_gitconfig() {
     local name="$2"
     local email="$3"
     local sign_commits="${4:-0}"
-    local key_path="${5:-~/.ssh/id_ed25519_${label}}"
+    local key_path="${5:-$HOME/.ssh/id_ed25519_${label}}"
 
     cat <<EOF
 ${GIDEON_MANAGED_START} Profile: ${label}
@@ -248,7 +248,7 @@ write_profile_gitconfig() {
     local name="$2"
     local email="$3"
     local sign_commits="${4:-0}"
-    local key_path="${5:-~/.ssh/id_ed25519_${label}}"
+    local key_path="${5:-$HOME/.ssh/id_ed25519_${label}}"
     local profile_path="$GIDEON_PROFILES_DIR/${label}.gitconfig"
 
     local content

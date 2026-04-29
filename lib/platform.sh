@@ -240,3 +240,26 @@ EOF
             ;;
     esac
 }
+
+# ------------------------------------------------------------------------------
+# copy_to_clipboard — Opportunistically copies text to the system clipboard
+# ------------------------------------------------------------------------------
+copy_to_clipboard() {
+    local text="$1"
+    
+    if command -v pbcopy >/dev/null 2>&1; then
+        printf "%s" "$text" | pbcopy
+        return 0
+    elif command -v clip.exe >/dev/null 2>&1; then
+        printf "%s" "$text" | clip.exe
+        return 0
+    elif command -v xclip >/dev/null 2>&1; then
+        printf "%s" "$text" | xclip -selection clipboard
+        return 0
+    elif command -v xsel >/dev/null 2>&1; then
+        printf "%s" "$text" | xsel --clipboard --input
+        return 0
+    fi
+    
+    return 1
+}

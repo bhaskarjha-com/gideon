@@ -115,7 +115,13 @@ print_key_box() {
     printf >&2 '  %b┌─ %s (%s) ─────────────────────┐%b\n' "$BOLD" "$label" "$email" "$RESET"
     printf >&2 '  %b│%b %s\n' "$DIM" "$RESET" "$key_content"
     printf >&2 '  %b└──────────────────────────────────────────┘%b\n' "$DIM" "$RESET"
-    printf >&2 '  %b%s%b Copy and add at: %bhttps://github.com/settings/ssh/new%b\n' "$BLUE" "$SYM_INFO" "$RESET" "$BOLD" "$RESET"
+    
+    # Opportunistic Clipboard
+    if copy_to_clipboard "$key_content"; then
+        printf >&2 '  %b%s%b %bCOPIED TO CLIPBOARD!%b Add it here: %bhttps://github.com/settings/ssh/new%b\n' "$GREEN" "✓" "$RESET" "$BOLD" "$RESET" "$CYAN" "$RESET"
+    else
+        printf >&2 '  %b%s%b Copy and add at: %bhttps://github.com/settings/ssh/new%b\n' "$BLUE" "$SYM_INFO" "$RESET" "$BOLD" "$RESET"
+    fi
     printf >&2 '\n'
 }
 

@@ -4,9 +4,9 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
-source_gideon_libs
-
 setup_test_home
+
+source_gideon_libs
 detect_os
 
 # --- Tests ---
@@ -52,7 +52,7 @@ test_global_block_has_ssh_command() {
     local block
     block=$(build_global_gitconfig_block)
 
-    assert_contains "$block" "sshCommand = ssh -i ~/.ssh/id_ed25519_global" "has sshCommand"
+    assert_contains "$block" "sshCommand = ssh -i ${HOME}/.ssh/id_ed25519_global" "has sshCommand"
 }
 
 test_global_block_has_includeif() {
@@ -121,11 +121,11 @@ test_global_block_has_managed_markers() {
 
 test_profile_gitconfig_content() {
     local content
-    content=$(build_profile_gitconfig "pro" "Pro User" "pro@test.com")
+    content=$(build_profile_gitconfig "pro" "Pro User" "pro@test.com" "0" "${HOME}/.ssh/id_ed25519_pro")
 
     assert_contains "$content" "name = Pro User" "has name" &&
     assert_contains "$content" "email = pro@test.com" "has email" &&
-    assert_contains "$content" "sshCommand = ssh -i ~/.ssh/id_ed25519_pro" "has sshCommand" &&
+    assert_contains "$content" "sshCommand = ssh -i ${HOME}/.ssh/id_ed25519_pro" "has sshCommand" &&
     assert_contains "$content" "[gideon:managed:start] Profile: pro" "has start marker" &&
     assert_contains "$content" "[gideon:managed:end] Profile: pro" "has end marker"
 }

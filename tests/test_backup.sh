@@ -3,9 +3,9 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
-source_gideon_libs
-
 setup_test_home
+
+source_gideon_libs
 detect_os
 
 # --- Tests ---

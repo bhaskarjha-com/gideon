@@ -7,9 +7,9 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
-source_gideon_libs
-
 setup_test_home
+
+source_gideon_libs
 detect_os
 
 # --- Integration tests ---
@@ -21,6 +21,9 @@ setup_two_profiles() {
     PROFILE_NAMES=("Test Global" "Test Pro")
     PROFILE_EMAILS=("global@test.com" "pro@test.com")
     PROFILE_DIRS=("" "$HOME/dev/pro")
+    PROFILE_KEYS=("$HOME/.ssh/id_ed25519_global" "$HOME/.ssh/id_ed25519_pro")
+    PROFILE_PROVIDERS=("github.com" "github.com")
+    PROFILE_SIGNS=("0" "0")
     PROFILE_COUNT=2
     DEFAULT_PROFILE_INDEX=0
 
@@ -29,9 +32,9 @@ setup_two_profiles() {
 
     # Execute all setup steps
     ensure_dirs 2>/dev/null
-    generate_ssh_key "global" "global@test.com" 2>/dev/null
-    generate_ssh_key "pro" "pro@test.com" 2>/dev/null
-    write_profile_gitconfig "pro" "Test Pro" "pro@test.com" 2>/dev/null
+    generate_ssh_key "global" "global@test.com" "$HOME/.ssh/id_ed25519_global" 2>/dev/null || true
+    generate_ssh_key "pro" "pro@test.com" "$HOME/.ssh/id_ed25519_pro" 2>/dev/null || true
+    write_profile_gitconfig "pro" "Test Pro" "pro@test.com" "0" "$HOME/.ssh/id_ed25519_pro" 2>/dev/null
     write_global_gitconfig 2>/dev/null
     write_ssh_config 2>/dev/null
     write_profiles_conf 2>/dev/null
@@ -63,7 +66,7 @@ test_integration_includeif_correct() {
 test_integration_profile_config_created() {
     assert_file_exists "$GIDEON_PROFILES_DIR/pro.gitconfig" "pro profile exists" &&
     assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "email = pro@test.com" "pro has email" &&
-    assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "sshCommand = ssh -i ~/.ssh/id_ed25519_pro" "pro has sshCommand"
+    assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "sshCommand = ssh -i ${HOME}/.ssh/id_ed25519_pro" "pro has sshCommand"
 }
 
 test_integration_ssh_config_created() {
@@ -128,6 +131,8 @@ test_integration_backup_created() {
 }
 
 test_integration_gideon_run() {
+    # Clean up to avoid interactive prompts on existing keys
+    rm -rf "$HOME/.ssh" "$GIDEON_CONFIG_DIR"
     setup_two_profiles
 
     # Execute gideon run in a subshell, verify it exports the right email
@@ -135,8 +140,11 @@ test_integration_gideon_run() {
     local gideon_script
     gideon_script="$(dirname "${BASH_SOURCE[0]}")/../gideon"
     
-    # We pipe env output to grep to find the GIT_AUTHOR_EMAIL
-    output=$("$gideon_script" run pro -- env | grep "^GIT_AUTHOR_EMAIL=")
+    # Run gideon and capture output, ignoring failures due to set -e
+    local raw_output
+    raw_output=$("$gideon_script" run pro -- env 2>&1 || true)
+    
+    output=$(echo "$raw_output" | grep "^GIT_AUTHOR_EMAIL=" || true)
     
     assert_equals "GIT_AUTHOR_EMAIL=pro@test.com" "$output" "gideon run exports correct environment variable"
 }

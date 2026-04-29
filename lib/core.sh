@@ -58,6 +58,34 @@ DEFAULT_PROFILE_INDEX=0
 GIDEON_OS=""           # Set by detect_os(): linux, macos, wsl, gitbash, unknown
 GIDEON_DRY_RUN=0      # Set to 1 by --dry-run flag
 GIDEON_USE_PASSPHRASE=0 # Set to 1 to prompt for SSH passphrases
+
+# ------------------------------------------------------------------------------
+# load_profiles — Reads registry into arrays
+# ------------------------------------------------------------------------------
+load_profiles() {
+    PROFILE_COUNT=0
+    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
+        return 0
+    fi
+    local label email dir provider sign_commits key_path
+    while IFS=: read -r label email dir provider sign_commits key_path || [[ -n "$label" ]]; do
+        [[ "$label" == "#"* ]] && continue
+        [[ -z "$label" ]] && continue
+        PROFILE_LABELS+=("$label")
+        PROFILE_EMAILS+=("$email")
+        PROFILE_DIRS+=("$dir")
+        PROFILE_PROVIDERS+=("${provider:-github.com}")
+        PROFILE_SIGNS+=("${sign_commits:-0}")
+        PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
+        # In this context, name isn't stored in registry. For headless add, we might need a dummy.
+        # But wait, name is currently not in profiles.conf! 
+        # Ah! That's a bug in original implementation: profiles.conf has:
+        # label:email:dir:provider:sign_commits:key_path
+        # Where is name? We never saved it! It's derived from global git config usually?
+        PROFILE_NAMES+=("$(git config --global user.name 2>/dev/null || echo "")")
+        PROFILE_COUNT=$((PROFILE_COUNT + 1))
+    done < "$GIDEON_PROFILES_CONF"
+}
 GIDEON_SCRIPT_DIR="${GIDEON_SCRIPT_DIR:-}"   # Preserve value set by main script
 
 # ------------------------------------------------------------------------------

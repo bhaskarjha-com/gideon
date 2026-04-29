@@ -1,0 +1,183 @@
+++ resolve_script_dir
+++ local source
+++ tr -d '\r'
++++ printf %s ./gideon
++++ tr -d '\r'
+++ source=./gideon
+++ [[ -z ./gideon ]]
+++ [[ ./gideon == \b\a\s\h ]]
+++ [[ ./gideon != /* ]]
++++ pwd
+++ source=/media/sf_dev/pro/gideon/./gideon
+++ [[ -L /media/sf_dev/pro/gideon/./gideon ]]
+++ local dir
+++++ dirname /media/sf_dev/pro/gideon/./gideon
++++ cd -P /media/sf_dev/pro/gideon/.
++++ pwd
+++ dir=/media/sf_dev/pro/gideon
+++ printf %s /media/sf_dev/pro/gideon
++ GIDEON_SCRIPT_DIR=/media/sf_dev/pro/gideon
++ gideon_source /media/sf_dev/pro/gideon/lib/core.sh
++ source /dev/fd/54
+++ tr -d '\r'
+++ GIDEON_VERSION=1.0.0
+++ GIDEON_CONFIG_DIR=/home/ag-deb/.config/gideon
+++ GIDEON_BACKUP_DIR=/home/ag-deb/.config/gideon/backups
+++ GIDEON_PROFILES_DIR=/home/ag-deb/.config/gideon/profiles
+++ GIDEON_HOOKS_DIR=/home/ag-deb/.config/gideon/hooks
+++ GIDEON_PROFILES_CONF=/home/ag-deb/.config/gideon/profiles.conf
+++ GIDEON_MARKER_PREFIX='# [gideon:managed'
+++ GIDEON_MANAGED_START='# [gideon:managed:start]'
+++ GIDEON_MANAGED_END='# [gideon:managed:end]'
+++ PROFILE_LABELS=()
+++ PROFILE_NAMES=()
+++ PROFILE_EMAILS=()
+++ PROFILE_DIRS=()
+++ PROFILE_PROVIDERS=()
+++ PROFILE_SIGNS=()
+++ PROFILE_KEYS=()
+++ PROFILE_COUNT=0
+++ DEFAULT_PROFILE_INDEX=0
+++ GIDEON_OS=
+++ GIDEON_DRY_RUN=0
+++ GIDEON_USE_PASSPHRASE=0
+++ GIDEON_SCRIPT_DIR=/media/sf_dev/pro/gideon
++ gideon_source /media/sf_dev/pro/gideon/lib/platform.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/ui.sh
++ source /dev/fd/54
+++ tr -d '\r'
+++ setup_colors
+++ [[ -z '' ]]
+++ [[ -t 2 ]]
+++ RED=
+++ GREEN=
+++ YELLOW=
+++ BLUE=
+++ CYAN=
+++ DIM=
+++ BOLD=
+++ RESET=
+++ SYM_CHECK=✓
+++ SYM_CROSS=✗
+++ SYM_WARN=⚠
+++ SYM_INFO=i
+++ SYM_ARROW=→
+++ SYM_BULLET=•
++ gideon_source /media/sf_dev/pro/gideon/lib/validate.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/backup.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/ssh.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/gitconfig.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/guard.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/verify.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/teardown.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/discovery.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ gideon_source /media/sf_dev/pro/gideon/lib/setup.sh
++ source /dev/fd/54
+++ tr -d '\r'
++ trap cleanup SIGINT SIGTERM
++ main profile remove test
++ [[ 3 -eq 0 ]]
++ local cmd=profile
++ shift
++ case "$cmd" in
++ cmd_profile remove test
++ local action=remove
++ shift
++ local label=test
++ shift
++ [[ -z remove ]]
++ [[ -z test ]]
++ load_profiles
++ PROFILE_COUNT=0
++ [[ ! -f /home/ag-deb/.config/gideon/profiles.conf ]]
++ IFS=:
++ read -r label email dir provider sign_commits key_path
++ [[ # gideon profile registry — generated on 2026-04-28 == \#* ]]
++ continue
++ IFS=:
++ read -r label email dir provider sign_commits key_path
++ [[ # Format == \#* ]]
++ continue
++ IFS=:
++ read -r label email dir provider sign_commits key_path
++ [[ # Used by the pre-commit guard hook == \#* ]]
++ continue
++ IFS=:
++ read -r label email dir provider sign_commits key_path
++ [[ global == \#* ]]
++ [[ -z global ]]
++ PROFILE_LABELS+=("$label")
++ PROFILE_EMAILS+=("$email")
++ PROFILE_DIRS+=("$dir")
++ PROFILE_PROVIDERS+=("${provider:-github.com}")
++ PROFILE_SIGNS+=("${sign_commits:-0}")
++ PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
++ PROFILE_NAMES+=("$(git config --global user.name 2> /dev/null || echo "")")
+++ git config --global user.name
+++ echo ''
++ PROFILE_COUNT=1
++ IFS=:
++ read -r label email dir provider sign_commits key_path
++ [[ work == \#* ]]
++ [[ -z work ]]
++ PROFILE_LABELS+=("$label")
++ PROFILE_EMAILS+=("$email")
++ PROFILE_DIRS+=("$dir")
++ PROFILE_PROVIDERS+=("${provider:-github.com}")
++ PROFILE_SIGNS+=("${sign_commits:-0}")
++ PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
++ PROFILE_NAMES+=("$(git config --global user.name 2> /dev/null || echo "")")
+++ git config --global user.name
+++ echo ''
++ PROFILE_COUNT=2
++ IFS=:
++ read -r label email dir provider sign_commits key_path
++ [[ test == \#* ]]
++ [[ -z test ]]
++ PROFILE_LABELS+=("$label")
++ PROFILE_EMAILS+=("$email")
++ PROFILE_DIRS+=("$dir")
++ PROFILE_PROVIDERS+=("${provider:-github.com}")
++ PROFILE_SIGNS+=("${sign_commits:-0}")
++ PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
++ PROFILE_NAMES+=("$(git config --global user.name 2> /dev/null || echo "")")
+++ git config --global user.name
+++ echo ''
++ PROFILE_COUNT=3
++ IFS=:
++ read -r label email dir provider sign_commits key_path
++ [[ -n '' ]]
++ [[ 3 -eq 0 ]]
++ case "$action" in
++ local idx=-1
++ local i
+++ seq 0 2
++ for i in $(seq 0 $((PROFILE_COUNT - 1)))
++ [[ global == '' ]]
++ for i in $(seq 0 $((PROFILE_COUNT - 1)))
++ [[ work == '' ]]
++ for i in $(seq 0 $((PROFILE_COUNT - 1)))
++ [[ test == '' ]]
++ [[ -1 -eq -1 ]]
++ print_error 'Profile '\'''\'' not found.'
++ printf '  %b%s%b %s\n' '' ✗ '' 'Profile '\'''\'' not found.'
+  ✗ Profile '' not found.
++ exit 1
