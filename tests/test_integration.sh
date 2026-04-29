@@ -139,6 +139,7 @@ test_integration_gideon_run() {
     local output
     local gideon_script
     gideon_script="$(dirname "${BASH_SOURCE[0]}")/../gideon"
+    gideon_script="${gideon_script%$'\r'}"
     
     # Run gideon and capture output, ignoring failures due to set -e
     local raw_output
