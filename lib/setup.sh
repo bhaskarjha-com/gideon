@@ -82,7 +82,7 @@ prompt_add_profile() {
     
     ask_required "Profile Label (e.g. oss, client)"
     local label
-    label=$(to_lower \"$REPLY\")
+    label=$(to_lower "$REPLY")
     
     while ! validate_label "$label" || array_contains "$label" "${PROFILE_LABELS[@]+"${PROFILE_LABELS[@]}"}"; do
         print_warning "Invalid or duplicate label."

@@ -683,7 +683,7 @@ main() {
                     ;;
             esac
             ;;
-        doctor|status)
+        doctor)
             cmd_doctor "$@"
             ;;
         --help|-h|help)
