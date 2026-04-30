@@ -9,29 +9,29 @@
 # ------------------------------------------------------------------------------
 # install_guard — Install the pre-commit identity guard hook
 #
-# Creates hook script in $GIDEON_HOOKS_DIR/pre-commit
+# Creates hook script in $GITSETU_HOOKS_DIR/pre-commit
 # Sets git config --global core.hooksPath to point to that directory.
 #
 # Usage: install_guard
 # ------------------------------------------------------------------------------
 install_guard() {
-    local hook_path="$GIDEON_HOOKS_DIR/pre-commit"
+    local hook_path="$GITSETU_HOOKS_DIR/pre-commit"
 
     # Check if core.hooksPath is already set to something else
     local existing_hooks_path
     existing_hooks_path=$(git config --global core.hooksPath 2>/dev/null || true)
 
-    if [[ -n "$existing_hooks_path" ]] && [[ "$existing_hooks_path" != "$GIDEON_HOOKS_DIR" ]]; then
+    if [[ -n "$existing_hooks_path" ]] && [[ "$existing_hooks_path" != "$GITSETU_HOOKS_DIR" ]]; then
         print_warning "core.hooksPath is already set to: $existing_hooks_path"
-        if ! confirm "Override with gideon hooks directory?" "n"; then
+        if ! confirm "Override with gitsetu hooks directory?" "n"; then
             print_info "Guard hook installation skipped."
             return 0
         fi
     fi
 
-    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+    if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
         print_info "[DRY RUN] Would install guard hook at: $hook_path"
-        print_info "[DRY RUN] Would set core.hooksPath = $GIDEON_HOOKS_DIR"
+        print_info "[DRY RUN] Would set core.hooksPath = $GITSETU_HOOKS_DIR"
         return 0
     fi
 
@@ -40,18 +40,18 @@ install_guard() {
     # Write the hook script
     cat > "$hook_path" <<'HOOK_SCRIPT'
 #!/usr/bin/env bash
-# [gideon:managed] Pre-commit identity guard
+# [gitsetu:managed] Pre-commit identity guard
 # Checks if current user.email matches expected profile for this directory.
-# Installed by: gideon guard --install
-# Remove with:  gideon guard --uninstall
+# Installed by: gitsetu guard --install
+# Remove with:  gitsetu guard --uninstall
 
 set -euo pipefail
 
 # Find the profiles.conf
-GIDEON_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/gideon/profiles.conf"
+GITSETU_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu/profiles.conf"
 
-if [[ ! -f "$GIDEON_CONF" ]]; then
-    # No config found — allow commit (gideon not fully set up)
+if [[ ! -f "$GITSETU_CONF" ]]; then
+    # No config found — allow commit (gitsetu not fully set up)
     exit 0
 fi
 
@@ -87,7 +87,7 @@ while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
         expected_label="$label"
         # Don't break — last match wins (most specific path)
     fi
-done < "$GIDEON_CONF"
+done < "$GITSETU_CONF"
 
 # If no profile matched this directory, allow commit
 if [[ -z "$expected_email" ]]; then
@@ -97,11 +97,11 @@ fi
 # Compare
 if [[ "$actual_email" != "$expected_email" ]]; then
     printf '\n'
-    printf '  \033[0;33m⚠\033[0m  \033[1mgideon: Identity mismatch detected!\033[0m\n'
+    printf '  \033[0;33m⚠\033[0m  \033[1mgitsetu: Identity mismatch detected!\033[0m\n'
     printf '     Expected: \033[0;32m%s\033[0m (profile: %s)\n' "$expected_email" "$expected_label"
     printf '     Actual:   \033[0;31m%s\033[0m\n' "$actual_email"
     printf '\n'
-    printf '     Run \033[1mgideon status\033[0m to investigate.\n'
+    printf '     Run \033[1mgitsetu status\033[0m to investigate.\n'
     printf '     Use \033[2m--no-verify\033[0m to skip this check.\n'
     printf '\n'
     exit 1
@@ -128,24 +128,24 @@ exit 0
 HOOK_SCRIPT
 
     chmod +x "$hook_path"
-    git config --global core.hooksPath "$GIDEON_HOOKS_DIR"
+    git config --global core.hooksPath "$GITSETU_HOOKS_DIR"
 
     print_success "Guard hook installed: $hook_path"
     print_info "All repos will now check identity before commits."
-    print_info "Use 'gideon guard --uninstall' to remove."
+    print_info "Use 'gitsetu guard --uninstall' to remove."
 }
 
 # ------------------------------------------------------------------------------
 # uninstall_guard — Remove the pre-commit identity guard hook
 #
-# Removes the hook file and unsets core.hooksPath (only if it was gideon's).
+# Removes the hook file and unsets core.hooksPath (only if it was gitsetu's).
 #
 # Usage: uninstall_guard
 # ------------------------------------------------------------------------------
 uninstall_guard() {
-    local hook_path="$GIDEON_HOOKS_DIR/pre-commit"
+    local hook_path="$GITSETU_HOOKS_DIR/pre-commit"
 
-    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+    if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
         print_info "[DRY RUN] Would remove: $hook_path"
         print_info "[DRY RUN] Would unset core.hooksPath"
         return 0
@@ -165,13 +165,13 @@ uninstall_guard() {
     
     # Normalize slashes for Windows Git Bash paths (C:\ vs C:/ vs /c/)
     local normalized_current="${current_hooks_path//\\//}"
-    local normalized_target="${GIDEON_HOOKS_DIR//\\//}"
+    local normalized_target="${GITSETU_HOOKS_DIR//\\//}"
 
     # Match exact path or suffix (to handle Windows C:/ vs /c/ drive letter differences)
-    if [[ "$normalized_current" == "$normalized_target" ]] || [[ "$normalized_current" == *"/gideon/hooks" ]]; then
+    if [[ "$normalized_current" == "$normalized_target" ]] || [[ "$normalized_current" == *"/gitsetu/hooks" ]]; then
         git config --global --unset core.hooksPath
         print_success "Unset core.hooksPath"
     elif [[ -n "$current_hooks_path" ]]; then
-        print_warning "core.hooksPath points to '$current_hooks_path' (not gideon). Leaving it."
+        print_warning "core.hooksPath points to '$current_hooks_path' (not gitsetu). Leaving it."
     fi
 }

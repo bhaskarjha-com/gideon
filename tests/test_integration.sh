@@ -2,21 +2,21 @@
 # shellcheck disable=SC2034  # Test state vars are consumed by sourced library functions
 # tests/test_integration.sh — Full end-to-end integration test
 #
-# Simulates a complete gideon setup with 2 profiles in an isolated temp HOME.
+# Simulates a complete gitsetu setup with 2 profiles in an isolated temp HOME.
 # Does NOT require network access (skips SSH connectivity tests).
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 setup_test_home
 
-source_gideon_libs
+source_gitsetu_libs
 detect_os
 
 # --- Integration tests ---
 
 # Simulate a full 2-profile setup
 setup_two_profiles() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global" "pro")
     PROFILE_NAMES=("Test Global" "Test Pro")
     PROFILE_EMAILS=("global@test.com" "pro@test.com")
@@ -64,9 +64,9 @@ test_integration_includeif_correct() {
 }
 
 test_integration_profile_config_created() {
-    assert_file_exists "$GIDEON_PROFILES_DIR/pro.gitconfig" "pro profile exists" &&
-    assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "email = pro@test.com" "pro has email" &&
-    assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "sshCommand = ssh -i ${HOME}/.ssh/id_ed25519_pro" "pro has sshCommand"
+    assert_file_exists "$GITSETU_PROFILES_DIR/pro.gitconfig" "pro profile exists" &&
+    assert_file_contains "$GITSETU_PROFILES_DIR/pro.gitconfig" "email = pro@test.com" "pro has email" &&
+    assert_file_contains "$GITSETU_PROFILES_DIR/pro.gitconfig" "sshCommand = ssh -i ${HOME}/.ssh/id_ed25519_pro" "pro has sshCommand"
 }
 
 test_integration_ssh_config_created() {
@@ -77,21 +77,21 @@ test_integration_ssh_config_created() {
 }
 
 test_integration_profiles_conf_created() {
-    assert_file_exists "$GIDEON_PROFILES_CONF" "profiles.conf exists" &&
-    assert_file_contains "$GIDEON_PROFILES_CONF" "global:global@test.com:" "global entry" &&
-    assert_file_contains "$GIDEON_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro" "pro entry"
+    assert_file_exists "$GITSETU_PROFILES_CONF" "profiles.conf exists" &&
+    assert_file_contains "$GITSETU_PROFILES_CONF" "global:global@test.com:" "global entry" &&
+    assert_file_contains "$GITSETU_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro" "pro entry"
 }
 
 test_integration_gitconfig_parseable() {
     # Use git config --file to verify the generated config is valid
     local result
     result=$(git config --file "$HOME/.gitconfig" include.path 2>/dev/null || echo "PARSE_ERROR")
-    assert_equals "${GIDEON_PROFILES_DIR}/global.gitconfig" "$result" "git can parse global include"
+    assert_equals "${GITSETU_PROFILES_DIR}/global.gitconfig" "$result" "git can parse global include"
 }
 
 test_integration_profile_gitconfig_parseable() {
     local result
-    result=$(git config --file "$GIDEON_PROFILES_DIR/pro.gitconfig" user.email 2>/dev/null || echo "PARSE_ERROR")
+    result=$(git config --file "$GITSETU_PROFILES_DIR/pro.gitconfig" user.email 2>/dev/null || echo "PARSE_ERROR")
     assert_equals "pro@test.com" "$result" "git can parse profile email"
 }
 
@@ -109,7 +109,7 @@ test_integration_idempotent_rerun() {
 
     # Check no duplicates
     local gitconfig_markers
-    gitconfig_markers=$(grep -c "\[gideon:managed:start\]" "$HOME/.gitconfig")
+    gitconfig_markers=$(grep -c "\[gitsetu:managed:start\]" "$HOME/.gitconfig")
     assert_equals "1" "$gitconfig_markers" "gitconfig has exactly 1 managed block" || return 1
 
     local ssh_host_count
@@ -120,37 +120,37 @@ test_integration_idempotent_rerun() {
 test_integration_backup_created() {
     # Backups should have been created during the re-run
     local backup_count
-    backup_count=$(find "$GIDEON_BACKUP_DIR" -name "*.bak" 2>/dev/null | wc -l)
+    backup_count=$(find "$GITSETU_BACKUP_DIR" -name "*.bak" 2>/dev/null | wc -l)
 
     if [[ "$backup_count" -ge 1 ]]; then
         return 0
     fi
 
-    printf '    FAIL: No backups found in %s\n' "$GIDEON_BACKUP_DIR"
+    printf '    FAIL: No backups found in %s\n' "$GITSETU_BACKUP_DIR"
     return 1
 }
 
-test_integration_gideon_run() {
+test_integration_gitsetu_run() {
     # Clean up to avoid interactive prompts on existing keys
-    rm -rf "$HOME/.ssh" "$GIDEON_CONFIG_DIR"
+    rm -rf "$HOME/.ssh" "$GITSETU_CONFIG_DIR"
     setup_two_profiles
 
-    # Execute gideon run in a subshell, verify it exports the right email
+    # Execute gitsetu run in a subshell, verify it exports the right email
     local output
-    local gideon_script
-    gideon_script="$(dirname "${BASH_SOURCE[0]}")/../gideon"
-    gideon_script="${gideon_script%$'\r'}"
+    local gitsetu_script
+    gitsetu_script="$(dirname "${BASH_SOURCE[0]}")/../gitsetu"
+    gitsetu_script="${gitsetu_script%$'\r'}"
     
-    # Run gideon and capture output, ignoring failures due to set -e
+    # Run gitsetu and capture output, ignoring failures due to set -e
     local raw_output
-    raw_output=$(bash "$gideon_script" run pro -- env 2>&1 || true)
+    raw_output=$(bash "$gitsetu_script" run pro -- env 2>&1 || true)
     
     output=$(echo "$raw_output" | grep "^GIT_AUTHOR_EMAIL=" || true)
     
     if [[ "$output" != "GIT_AUTHOR_EMAIL=pro@test.com" ]]; then
         echo "RAW OUTPUT WAS: $raw_output"
     fi
-    assert_equals "GIT_AUTHOR_EMAIL=pro@test.com" "$output" "gideon run exports correct environment variable"
+    assert_equals "GIT_AUTHOR_EMAIL=pro@test.com" "$output" "gitsetu run exports correct environment variable"
 
 }
 
@@ -167,5 +167,5 @@ run_test "global gitconfig is parseable by git" test_integration_gitconfig_parse
 run_test "profile gitconfig is parseable by git" test_integration_profile_gitconfig_parseable
 run_test "re-run is idempotent (no duplicates)" test_integration_idempotent_rerun
 run_test "backups are created during re-run" test_integration_backup_created
-run_test "gideon run exports correctly" test_integration_gideon_run
+run_test "gitsetu run exports correctly" test_integration_gitsetu_run
 print_results "Integration tests"

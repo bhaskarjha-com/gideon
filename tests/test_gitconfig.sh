@@ -6,7 +6,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 setup_test_home
 
-source_gideon_libs
+source_gitsetu_libs
 detect_os
 
 # --- Tests ---
@@ -23,7 +23,7 @@ test_global_block_has_user() {
     block=$(build_global_gitconfig_block)
 
     assert_contains "$block" "[include]" "has include block"
-    assert_contains "$block" "path = ${GIDEON_PROFILES_DIR}/global.gitconfig" "has global include path"
+    assert_contains "$block" "path = ${GITSETU_PROFILES_DIR}/global.gitconfig" "has global include path"
 }
 
 test_global_block_has_includeif() {
@@ -41,7 +41,7 @@ test_global_block_has_includeif() {
     keyword=$(get_gitdir_keyword)
 
     assert_contains "$block" "[includeIf \"${keyword}/dev/pro/\"]" "has includeIf for pro" &&
-    assert_contains "$block" "path = ${GIDEON_PROFILES_DIR}/pro.gitconfig" "has profile path"
+    assert_contains "$block" "path = ${GITSETU_PROFILES_DIR}/pro.gitconfig" "has profile path"
 }
 
 test_global_block_has_safe_directories() {
@@ -86,8 +86,8 @@ test_global_block_has_managed_markers() {
     local block
     block=$(build_global_gitconfig_block)
 
-    assert_contains "$block" "[gideon:managed:start]" "has start marker" &&
-    assert_contains "$block" "[gideon:managed:end]" "has end marker"
+    assert_contains "$block" "[gitsetu:managed:start]" "has start marker" &&
+    assert_contains "$block" "[gitsetu:managed:end]" "has end marker"
 }
 
 test_profile_gitconfig_content() {
@@ -97,12 +97,12 @@ test_profile_gitconfig_content() {
     assert_contains "$content" "name = Pro User" "has name" &&
     assert_contains "$content" "email = pro@test.com" "has email" &&
     assert_contains "$content" "sshCommand = ssh -i ${HOME}/.ssh/id_ed25519_pro" "has sshCommand" &&
-    assert_contains "$content" "[gideon:managed:start] Profile: pro" "has start marker" &&
-    assert_contains "$content" "[gideon:managed:end] Profile: pro" "has end marker"
+    assert_contains "$content" "[gitsetu:managed:start] Profile: pro" "has start marker" &&
+    assert_contains "$content" "[gitsetu:managed:end] Profile: pro" "has end marker"
 }
 
 test_write_global_gitconfig_creates_file() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global")
     PROFILE_NAMES=("Test")
     PROFILE_EMAILS=("g@t.com")
@@ -116,7 +116,7 @@ test_write_global_gitconfig_creates_file() {
 }
 
 test_write_global_gitconfig_idempotent() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global" "pro")
     PROFILE_NAMES=("Test" "Pro")
     PROFILE_EMAILS=("g@t.com" "p@t.com")
@@ -128,12 +128,12 @@ test_write_global_gitconfig_idempotent() {
     write_global_gitconfig 2>/dev/null
 
     local count
-    count=$(grep -c "\[gideon:managed:start\]" "$HOME/.gitconfig")
+    count=$(grep -c "\[gitsetu:managed:start\]" "$HOME/.gitconfig")
     assert_equals "1" "$count" "exactly one managed block after two runs"
 }
 
 test_write_global_gitconfig_preserves_user_content() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global")
     PROFILE_NAMES=("Test")
     PROFILE_EMAILS=("g@t.com")
@@ -151,20 +151,20 @@ EOF
     write_global_gitconfig 2>/dev/null
 
     assert_file_contains "$HOME/.gitconfig" "co = checkout" "user alias preserved" &&
-    assert_file_contains "$HOME/.gitconfig" "[gideon:managed:start]" "managed block added"
+    assert_file_contains "$HOME/.gitconfig" "[gitsetu:managed:start]" "managed block added"
 }
 
 test_write_profile_gitconfig() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     ensure_dirs
     write_profile_gitconfig "pro" "Pro User" "pro@test.com" 2>/dev/null
 
-    assert_file_exists "$GIDEON_PROFILES_DIR/pro.gitconfig" "profile file created" &&
-    assert_file_contains "$GIDEON_PROFILES_DIR/pro.gitconfig" "email = pro@test.com" "has email"
+    assert_file_exists "$GITSETU_PROFILES_DIR/pro.gitconfig" "profile file created" &&
+    assert_file_contains "$GITSETU_PROFILES_DIR/pro.gitconfig" "email = pro@test.com" "has email"
 }
 
 test_write_profiles_conf() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global" "pro")
     PROFILE_NAMES=("Test" "Pro")
     PROFILE_EMAILS=("g@t.com" "p@t.com")
@@ -173,9 +173,9 @@ test_write_profiles_conf() {
 
     write_profiles_conf 2>/dev/null
 
-    assert_file_exists "$GIDEON_PROFILES_CONF" "profiles.conf created" &&
-    assert_file_contains "$GIDEON_PROFILES_CONF" "global:g@t.com:" "has global entry" &&
-    assert_file_contains "$GIDEON_PROFILES_CONF" "pro:p@t.com:/dev/pro" "has pro entry"
+    assert_file_exists "$GITSETU_PROFILES_CONF" "profiles.conf created" &&
+    assert_file_contains "$GITSETU_PROFILES_CONF" "global:g@t.com:" "has global entry" &&
+    assert_file_contains "$GITSETU_PROFILES_CONF" "pro:p@t.com:/dev/pro" "has pro entry"
 }
 
 # --- Run ---

@@ -7,7 +7,7 @@
 # ------------------------------------------------------------------------------
 # Color setup
 # Disabled automatically if NO_COLOR is set or stderr is not a terminal.
-# We check stderr (-t 2) because all gideon output goes to >&2.
+# We check stderr (-t 2) because all gitsetu output goes to >&2.
 # ------------------------------------------------------------------------------
 setup_colors() {
     if [[ -z "${NO_COLOR:-}" ]] && [[ -t 2 ]]; then
@@ -54,7 +54,7 @@ SYM_BULLET="•"
 print_header() {
     printf >&2 '\n'
     printf >&2 '  %b╔══════════════════════════════════════╗%b\n' "$BOLD" "$RESET"
-    printf >&2 '  %b║%b  %bgideon%b v%s%b                       ║%b\n' "$BOLD" "$RESET" "$CYAN$BOLD" "$RESET" "$GIDEON_VERSION" "$BOLD" "$RESET"
+    printf >&2 '  %b║%b  %bgitsetu%b v%s%b                       ║%b\n' "$BOLD" "$RESET" "$CYAN$BOLD" "$RESET" "$GITSETU_VERSION" "$BOLD" "$RESET"
     printf >&2 '  %b║  One command. All identities.       ║%b\n' "$BOLD" "$RESET"
     printf >&2 '  %b╚══════════════════════════════════════╝%b\n' "$BOLD" "$RESET"
     printf >&2 '\n'

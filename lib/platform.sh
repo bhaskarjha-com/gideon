@@ -6,7 +6,7 @@
 # ------------------------------------------------------------------------------
 # detect_os — Determines the current operating system/environment
 #
-# Sets GIDEON_OS to one of: linux, macos, wsl, gitbash, unknown
+# Sets GITSETU_OS to one of: linux, macos, wsl, gitbash, unknown
 #
 # Detection order matters:
 #   1. WSL first (reports as "linux" in $OSTYPE but has /proc/version marker)
@@ -22,7 +22,7 @@ detect_os() {
         proc_version=$(cat /proc/version 2>/dev/null || true)
         case "$proc_version" in
             *[Mm]icrosoft*|*WSL*)
-                GIDEON_OS="wsl"
+                GITSETU_OS="wsl"
                 return 0
                 ;;
         esac
@@ -31,15 +31,15 @@ detect_os() {
     # Check OSTYPE (fastest, available in bash)
     case "${OSTYPE:-}" in
         darwin*)
-            GIDEON_OS="macos"
+            GITSETU_OS="macos"
             return 0
             ;;
         msys*|mingw*|cygwin*)
-            GIDEON_OS="gitbash"
+            GITSETU_OS="gitbash"
             return 0
             ;;
         linux-gnu*|linux*)
-            GIDEON_OS="linux"
+            GITSETU_OS="linux"
             return 0
             ;;
     esac
@@ -48,11 +48,11 @@ detect_os() {
     local uname_out
     uname_out=$(uname -s 2>/dev/null || true)
     case "$uname_out" in
-        Darwin)   GIDEON_OS="macos" ;;
-        Linux)    GIDEON_OS="linux" ;;
+        Darwin)   GITSETU_OS="macos" ;;
+        Linux)    GITSETU_OS="linux" ;;
         MINGW*|MSYS*|CYGWIN*)
-                  GIDEON_OS="gitbash" ;;
-        *)        GIDEON_OS="unknown" ;;
+                  GITSETU_OS="gitbash" ;;
+        *)        GITSETU_OS="unknown" ;;
     esac
 }
 
@@ -99,7 +99,7 @@ normalize_path() {
 # Everything else uses case-sensitive: gitdir:
 # ------------------------------------------------------------------------------
 get_gitdir_keyword() {
-    case "$GIDEON_OS" in
+    case "$GITSETU_OS" in
         gitbash) printf 'gitdir/i:' ;;
         *)       printf 'gitdir:' ;;
     esac
@@ -159,7 +159,7 @@ check_prerequisites() {
     # Check git
     if ! command -v git >/dev/null 2>&1; then
         print_error "git is not installed"
-        case "$GIDEON_OS" in
+        case "$GITSETU_OS" in
             linux|wsl) print_info "  Install: sudo apt install git" ;;
             macos)     print_info "  Install: xcode-select --install  OR  brew install git" ;;
             gitbash)   print_info "  Install: download from https://git-scm.com/downloads" ;;
@@ -170,7 +170,7 @@ check_prerequisites() {
     # Check ssh-keygen
     if ! command -v ssh-keygen >/dev/null 2>&1; then
         print_error "ssh-keygen is not installed"
-        case "$GIDEON_OS" in
+        case "$GITSETU_OS" in
             linux|wsl) print_info "  Install: sudo apt install openssh-client" ;;
             macos)     print_info "  Should be pre-installed. Try: xcode-select --install" ;;
             gitbash)   print_info "  Should be included with Git for Windows" ;;
@@ -190,7 +190,7 @@ check_prerequisites() {
 # get_ssh_agent_advice — Returns platform-specific ssh-agent setup instructions
 # ------------------------------------------------------------------------------
 get_ssh_agent_advice() {
-    case "$GIDEON_OS" in
+    case "$GITSETU_OS" in
         macos)
             cat >&2 <<'EOF'
   macOS: Add to ~/.ssh/config:

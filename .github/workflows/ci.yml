@@ -20,7 +20,7 @@ jobs:
         run: sudo apt-get install -y shellcheck
 
       - name: Lint all scripts
-        run: shellcheck gideon lib/*.sh tests/*.sh
+        run: shellcheck gitsetu lib/*.sh tests/*.sh
 
   test:
     name: Tests (${{ matrix.os }})

@@ -38,7 +38,7 @@ generate_ssh_key() {
     if [[ -f "$key_path" ]]; then
         print_warning "SSH key already exists: $key_path"
 
-        if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+        if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
             print_info "[DRY RUN] Would prompt for action on existing key"
             return 0
         fi
@@ -64,7 +64,7 @@ generate_ssh_key() {
     fi
 
     # Dry run: just show what would happen
-    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+    if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
         print_info "[DRY RUN] Would generate: $key_path"
         print_info "[DRY RUN] ssh-keygen -t ed25519 -C \"$email\" -f \"$key_path\" -N \"\""
         return 0
@@ -82,7 +82,7 @@ generate_ssh_key() {
         print_info "Hardware Security Key detected. Please TOUCH YOUR YUBIKEY when prompted."
     fi
 
-    if [[ "${GIDEON_USE_PASSPHRASE:-0}" -eq 1 ]] || [[ "$key_type" == "ed25519-sk" ]]; then
+    if [[ "${GITSETU_USE_PASSPHRASE:-0}" -eq 1 ]] || [[ "$key_type" == "ed25519-sk" ]]; then
         # Prompt user for passphrase or FIDO2 touch interactively
         # shellcheck disable=SC2086
         ssh-keygen -t "$key_type" $extra_args -C "$email" -f "$key_path"
@@ -131,7 +131,7 @@ build_ssh_host_block() {
     prefix=$(printf '%s' "$hostname" | cut -d'.' -f1)
 
     cat <<EOF
-${GIDEON_MANAGED_START} ${label}
+${GITSETU_MANAGED_START} ${label}
 Host ${prefix}-${label}
     HostName ${hostname}
     User git
@@ -144,15 +144,15 @@ EOF
         echo "    UseKeychain yes"
     fi
 
-    echo "${GIDEON_MANAGED_END} ${label}"
+    echo "${GITSETU_MANAGED_END} ${label}"
 }
 
 # ------------------------------------------------------------------------------
-# write_ssh_config — Update ~/.ssh/config with gideon-managed host blocks
+# write_ssh_config — Update ~/.ssh/config with gitsetu-managed host blocks
 #
 # Strategy:
 #   1. Create ~/.ssh/config if it doesn't exist
-#   2. Remove ALL existing gideon-managed blocks (between markers)
+#   2. Remove ALL existing gitsetu-managed blocks (between markers)
 #   3. Append fresh managed blocks for all profiles
 #   4. Preserve all non-managed content verbatim
 #
@@ -169,7 +169,7 @@ write_ssh_config() {
     chmod 700 "$HOME/.ssh"
 
     # Dry run
-    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+    if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
         print_info "[DRY RUN] Would update: $ssh_config"
         local i
         for i in $(seq 0 $((PROFILE_COUNT - 1))); do
@@ -190,14 +190,14 @@ write_ssh_config() {
 
         awk '
             BEGIN { in_block=0; buffer="" }
-            /\[gideon:managed:start\]/ {
+            /\[gitsetu:managed:start\]/ {
                 in_block=1
                 buffer = $0 "\n"
                 next
             }
             in_block {
                 buffer = buffer $0 "\n"
-                if (/\[gideon:managed:end\]/) {
+                if (/\[gitsetu:managed:end\]/) {
                     in_block=0
                     buffer=""
                 }
@@ -255,5 +255,5 @@ display_public_keys() {
     printf >&2 "  %bYou no longer need special host aliases to clone!%b\n\n" "$BOLD" "$RESET"
     printf >&2 "  Simply %bcd%b into your profile's directory and run:\n" "$CYAN" "$RESET"
     printf >&2 "    git clone git@github.com:username/repo.git\n\n"
-    printf >&2 "  %bGideon will automatically intercept and use the correct SSH key!%b\n" "$BOLD" "$RESET"
+    printf >&2 "  %bGitSetu will automatically intercept and use the correct SSH key!%b\n" "$BOLD" "$RESET"
 }

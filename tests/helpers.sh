@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tests/helpers.sh — Minimal test framework for gideon
+# tests/helpers.sh — Minimal test framework for gitsetu
 #
 # Zero dependencies. Pure bash. Bash 3.2 compatible.
 # Provides assertion functions and isolated $HOME management.
@@ -215,7 +215,7 @@ TEST_HOME=""
 
 setup_test_home() {
     ORIGINAL_HOME="$HOME"
-    TEST_HOME=$(mktemp -d "${TMPDIR:-/tmp}/gideon-test.XXXXXX")
+    TEST_HOME=$(mktemp -d "${TMPDIR:-/tmp}/gitsetu-test.XXXXXX")
     export HOME="$TEST_HOME"
     unset XDG_CONFIG_HOME
     mkdir -p "$HOME/.ssh"
@@ -237,9 +237,9 @@ teardown_test_home() {
 trap teardown_test_home EXIT
 
 # ------------------------------------------------------------------------------
-# Source gideon modules for testing
+# Source gitsetu modules for testing
 # ------------------------------------------------------------------------------
-source_gideon_libs() {
+source_gitsetu_libs() {
     local script_dir
     script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 

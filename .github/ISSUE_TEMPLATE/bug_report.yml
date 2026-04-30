@@ -11,7 +11,7 @@ body:
     id: bash-version
     attributes:
       label: Bash Version
-      description: Please provide your Bash version (`bash --version`). Gideon requires Bash 3.2+.
+      description: Please provide your Bash version (`bash --version`). GitSetu requires Bash 3.2+.
       placeholder: "e.g., GNU bash, version 5.1.16(1)-release"
     validations:
       required: true

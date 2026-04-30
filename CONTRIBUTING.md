@@ -1,12 +1,12 @@
-# Contributing to gideon
+# Contributing to gitsetu
 
 Thank you for your interest in contributing!
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/bhaskarjha-com/gideon.git
-cd gideon
+git clone https://github.com/bhaskarjha-com/gitsetu.git
+cd gitsetu
 ```
 
 No build step. No dependencies to install.
@@ -31,7 +31,7 @@ Tests use an isolated `$HOME` in a temp directory — they never touch your real
 # macOS: brew install shellcheck
 
 # Lint all scripts
-shellcheck gideon lib/*.sh tests/*.sh
+shellcheck gitsetu lib/*.sh tests/*.sh
 ```
 
 All scripts must pass ShellCheck with **zero warnings**.
@@ -80,9 +80,9 @@ if [[ -f $path ]]; then
 When adding content to user config files, always use managed block markers:
 
 ```bash
-${GIDEON_MANAGED_START}
+${GITSETU_MANAGED_START}
 # your content here
-${GIDEON_MANAGED_END}
+${GITSETU_MANAGED_END}
 ```
 
 ## Pull Request Guidelines

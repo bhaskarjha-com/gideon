@@ -6,7 +6,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 setup_test_home
 
-source_gideon_libs
+source_gitsetu_libs
 detect_os
 
 # --- Tests ---
@@ -19,8 +19,8 @@ test_ssh_host_block_format() {
     assert_contains "$block" "HostName github.com" "has HostName" &&
     assert_contains "$block" "IdentityFile ${HOME}/.ssh/id_ed25519_pro" "has IdentityFile" &&
     assert_contains "$block" "IdentitiesOnly yes" "has IdentitiesOnly" &&
-    assert_contains "$block" "[gideon:managed:start] pro" "has start marker" &&
-    assert_contains "$block" "[gideon:managed:end] pro" "has end marker"
+    assert_contains "$block" "[gitsetu:managed:start] pro" "has start marker" &&
+    assert_contains "$block" "[gitsetu:managed:end] pro" "has end marker"
 }
 
 test_ssh_host_block_custom_host() {
@@ -32,7 +32,7 @@ test_ssh_host_block_custom_host() {
 }
 
 test_generate_key_creates_files() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     generate_ssh_key "testkey" "test@example.com" 2>/dev/null
 
     assert_file_exists "$HOME/.ssh/id_ed25519_testkey" "private key created" &&
@@ -41,7 +41,7 @@ test_generate_key_creates_files() {
 
 test_generate_key_permissions() {
     # Windows/NTFS doesn't support Unix permissions — chmod 600 is a no-op
-    if [[ "$GIDEON_OS" == "gitbash" ]]; then
+    if [[ "$GITSETU_OS" == "gitbash" ]]; then
         return 0  # Skip: permissions not enforceable on Windows
     fi
 
@@ -54,7 +54,7 @@ test_generate_key_permissions() {
         assert_equals "600" "$perms" "private key is 600"
     else
         # Generate it
-        GIDEON_DRY_RUN=0
+        GITSETU_DRY_RUN=0
         generate_ssh_key "testkey2" "test2@example.com" 2>/dev/null
         local perms
         perms=$(stat -c '%a' "$HOME/.ssh/id_ed25519_testkey2" 2>/dev/null || stat -f '%Lp' "$HOME/.ssh/id_ed25519_testkey2" 2>/dev/null)
@@ -63,7 +63,7 @@ test_generate_key_permissions() {
 }
 
 test_generate_key_dry_run() {
-    GIDEON_DRY_RUN=1
+    GITSETU_DRY_RUN=1
     generate_ssh_key "drykey" "dry@example.com" 2>/dev/null
 
     # File should NOT be created in dry run
@@ -75,7 +75,7 @@ test_generate_key_dry_run() {
 }
 
 test_write_ssh_config_creates_file() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global" "pro")
     PROFILE_COUNT=2
 
@@ -87,7 +87,7 @@ test_write_ssh_config_creates_file() {
 }
 
 test_write_ssh_config_idempotent() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global" "pro")
     PROFILE_COUNT=2
 
@@ -101,7 +101,7 @@ test_write_ssh_config_idempotent() {
 }
 
 test_write_ssh_config_preserves_user_content() {
-    GIDEON_DRY_RUN=0
+    GITSETU_DRY_RUN=0
     PROFILE_LABELS=("global")
     PROFILE_COUNT=1
 

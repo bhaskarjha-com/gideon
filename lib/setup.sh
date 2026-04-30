@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/setup.sh — Interactive Blueprint Dashboard for Gideon
+# lib/setup.sh — Interactive Blueprint Dashboard for GitSetu
 #
 # Replaces the linear wizard with a fast "Review & Apply" TUI menu.
 
@@ -10,7 +10,7 @@ render_blueprint_dashboard() {
     clear || printf '\033c'
     
     printf >&2 '\n  %b╔══════════════════════════════════════╗%b\n' "$BOLD" "$RESET"
-    printf >&2 '  %b║  Gideon Setup Blueprint              ║%b\n' "$BOLD" "$RESET"
+    printf >&2 '  %b║  GitSetu Setup Blueprint              ║%b\n' "$BOLD" "$RESET"
     printf >&2 '  %b╚══════════════════════════════════════╝%b\n\n' "$BOLD" "$RESET"
 
     if [[ "$PROFILE_COUNT" -eq 0 ]]; then
@@ -109,7 +109,7 @@ prompt_add_profile() {
     PROFILE_KEYS[PROFILE_COUNT]=$(normalize_path "$REPLY")
     
     PROFILE_PROVIDERS[PROFILE_COUNT]="github.com"
-    PROFILE_SIGNS[PROFILE_COUNT]="${GIDEON_DEFAULT_SIGN:-0}"
+    PROFILE_SIGNS[PROFILE_COUNT]="${GITSETU_DEFAULT_SIGN:-0}"
     
     PROFILE_COUNT=$((PROFILE_COUNT + 1))
 }
@@ -121,13 +121,13 @@ prompt_security() {
     printf >&2 '\n  ─── Global Security Settings ───\n'
     
     if confirm "Enable Native SSH Commit Signing for all generated profiles?" "n"; then
-        export GIDEON_DEFAULT_SIGN=1
+        export GITSETU_DEFAULT_SIGN=1
         local i
         for i in $(seq 0 $((PROFILE_COUNT - 1))); do
             PROFILE_SIGNS[i]=1
         done
     else
-        export GIDEON_DEFAULT_SIGN=0
+        export GITSETU_DEFAULT_SIGN=0
         local i
         for i in $(seq 0 $((PROFILE_COUNT - 1))); do
             PROFILE_SIGNS[i]=0
@@ -135,9 +135,9 @@ prompt_security() {
     fi
     
     if confirm "Protect newly generated keys with a Passphrase?" "n"; then
-        export GIDEON_USE_PASSPHRASE=1
+        export GITSETU_USE_PASSPHRASE=1
     else
-        export GIDEON_USE_PASSPHRASE=0
+        export GITSETU_USE_PASSPHRASE=0
     fi
 }
 
@@ -273,8 +273,8 @@ interactive_setup_wizard() {
                 ;;
             "H"|"HELP")
                 clear || printf '\033c'
-                printf >&2 '\n  %b─── Gideon Setup Help ───%b\n\n' "$BOLD" "$RESET"
-                printf >&2 '  Gideon auto-discovers your SSH keys and Git configurations.\n'
+                printf >&2 '\n  %b─── GitSetu Setup Help ───%b\n\n' "$BOLD" "$RESET"
+                printf >&2 '  GitSetu auto-discovers your SSH keys and Git configurations.\n'
                 printf >&2 '  If the proposed Blueprint looks correct, simply press %bENTER%b to apply.\n\n' "$BOLD" "$RESET"
                 printf >&2 '  %b[A]dd%b       : Manually add a new profile (e.g. client, oss).\n' "$BOLD" "$RESET"
                 printf >&2 '  %b[E]dit%b      : Modify a profile. Select its number to change Name, Email, or Key.\n' "$BOLD" "$RESET"
@@ -295,8 +295,28 @@ interactive_setup_wizard() {
 }
 
 # ------------------------------------------------------------------------------
+# cmd_add — Syntactic sugar for 'profile add' using positional arguments
+# Usage: gitsetu add <label> "<name>" <email> <dir>
+# ------------------------------------------------------------------------------
+cmd_add() {
+    local label="${1:-}"
+    local name="${2:-}"
+    local email="${3:-}"
+    local dir="${4:-}"
+
+    if [[ -z "$label" ]] || [[ -z "$name" ]] || [[ -z "$email" ]] || [[ -z "$dir" ]]; then
+        print_error "Usage: gitsetu add <label> \"<name>\" <email> <dir>"
+        printf >&2 "Example: gitsetu add personal \"Aditya Kumar\" aditya@gmail.com ~/personal\n"
+        exit 1
+    fi
+
+    # Pass it to the underlying profile router
+    cmd_profile add "$label" --name="$name" --email="$email" --dir="$dir"
+}
+
+# ------------------------------------------------------------------------------
 # cmd_profile — Headless router for adding/removing profiles
-# Usage: gideon profile add <label> --email="..."
+# Usage: gitsetu profile add <label> --email="..."
 # ------------------------------------------------------------------------------
 cmd_profile() {
     local action="$1"
@@ -305,7 +325,7 @@ cmd_profile() {
     shift
 
     if [[ -z "$action" ]] || [[ -z "$label" ]]; then
-        print_error "Usage: gideon profile add|remove <label> [flags...]"
+        print_error "Usage: gitsetu profile add|remove <label> [flags...]"
         exit 1
     fi
 
@@ -339,7 +359,7 @@ cmd_profile() {
                 PROFILE_EMAILS[idx]=""
                 PROFILE_DIRS[idx]="$HOME/$label"
                 PROFILE_PROVIDERS[idx]="github.com"
-                PROFILE_SIGNS[idx]="${GIDEON_DEFAULT_SIGN:-0}"
+                PROFILE_SIGNS[idx]="${GITSETU_DEFAULT_SIGN:-0}"
                 PROFILE_KEYS[idx]="$HOME/.ssh/id_ed25519_${label}"
             fi
 

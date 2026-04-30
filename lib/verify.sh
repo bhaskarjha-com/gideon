@@ -69,7 +69,7 @@ verify_git_config() {
         fi
 
         local label="${PROFILE_LABELS[$i]}"
-        local profile_path="$GIDEON_PROFILES_DIR/${label}.gitconfig"
+        local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
 
         if [[ ! -f "$profile_path" ]]; then
             print_error "Missing profile config: $profile_path"
@@ -232,7 +232,7 @@ verify_all() {
                 total_issues=$((total_issues + 1))
             fi
         else
-            local profile_path="$GIDEON_PROFILES_DIR/${label}.gitconfig"
+            local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
             if [[ ! -f "$profile_path" ]]; then
                 config_status="${RED}${SYM_CROSS}${RESET}"
                 total_issues=$((total_issues + 1))

@@ -1,12 +1,12 @@
 name: Feature Request
-description: Suggest an idea for Gideon
+description: Suggest an idea for GitSetu
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting an improvement for Gideon!
+        Thanks for suggesting an improvement for GitSetu!
   - type: textarea
     id: problem
     attributes:

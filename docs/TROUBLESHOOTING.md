@@ -1,24 +1,24 @@
-# Troubleshooting Gideon
+# Troubleshooting GitSetu
 
-Gideon is designed to be self-healing, but Git environments can be uniquely complex. This guide helps you diagnose and resolve common identity and SSH issues.
+GitSetu is designed to be self-healing, but Git environments can be uniquely complex. This guide helps you diagnose and resolve common identity and SSH issues.
 
 ---
 
 ## ⚡ Quick Diagnostics
 
-Before digging into specifics, run Gideon's built-in diagnostic tools. These instantly surface 90% of misconfigurations.
+Before digging into specifics, run GitSetu's built-in diagnostic tools. These instantly surface 90% of misconfigurations.
 
 ### 1. Check Active Status
 Navigate to the repository you are having trouble with and run:
 ```bash
-./gideon status
+./gitsetu status
 ```
 This will tell you exactly which identity Git is using for the current directory and the specific SSH key it will attempt to use.
 
 ### 2. Verify Infrastructure
 Run the full verification suite to ensure your keys, configs, and permissions are perfectly aligned:
 ```bash
-./gideon verify
+./gitsetu verify
 ```
 
 ---
@@ -45,17 +45,17 @@ This almost always means your public key hasn't been uploaded to GitHub/GitLab.
 > [!IMPORTANT]
 > GitHub strictly enforces a 1-to-1 mapping: Each SSH public key can only be attached to **ONE** GitHub account. 
 
-If you see this error, you are trying to add a key to your `work` account that is already attached to your `personal` account. You must generate a unique key for each account (which `gideon setup` handles automatically).
+If you see this error, you are trying to add a key to your `work` account that is already attached to your `personal` account. You must generate a unique key for each account (which `gitsetu setup` handles automatically).
 
 ### "Could not resolve hostname github-pro"
 
 > [!NOTE]
-> Gideon generates host aliases (like `github-pro`) **purely for testing connectivity**. You do NOT need to use them when cloning repositories.
+> GitSetu generates host aliases (like `github-pro`) **purely for testing connectivity**. You do NOT need to use them when cloning repositories.
 
 If you are running an `ssh -T` test and get this error, check your `~/.ssh/config`:
 1. Ensure the file exists.
-2. Verify it contains the `# [gideon:managed:start] pro` block.
-3. If it is missing, simply run `./gideon setup` again. Gideon is fully idempotent and will safely repair the file.
+2. Verify it contains the `# [gitsetu:managed:start] pro` block.
+3. If it is missing, simply run `./gitsetu setup` again. GitSetu is fully idempotent and will safely repair the file.
 
 ---
 
@@ -69,19 +69,19 @@ If you `cd` into a profile directory but Git still uses your global identity, th
 > Run `git config --show-origin --get-all core.sshCommand` to see exactly where Git is loading your SSH configuration from.
 
 **Common Causes:**
-1. **Trailing Slash:** The path in `~/.gitconfig` must end with a trailing slash (e.g., `gitdir:~/dev/pro/`). Gideon handles this automatically.
+1. **Trailing Slash:** The path in `~/.gitconfig` must end with a trailing slash (e.g., `gitdir:~/dev/pro/`). GitSetu handles this automatically.
 2. **Missing `.git` Directory:** `includeIf` only triggers if the current folder is a Git repository, OR if you are actively cloning a repository into it.
-3. **Dubious Ownership (VirtualBox/WSL):** Git actively blocks `includeIf` execution if the directory is owned by a different user (common in shared mounts). Gideon automatically mitigates this using `safe.directory` rules. If you manually moved folders, run `./gideon setup` again to update the safe directories.
+3. **Dubious Ownership (VirtualBox/WSL):** Git actively blocks `includeIf` execution if the directory is owned by a different user (common in shared mounts). GitSetu automatically mitigates this using `safe.directory` rules. If you manually moved folders, run `./gitsetu setup` again to update the safe directories.
 
 ### Identity Guard Hook Triggered
 
 ```text
-⚠ gideon: Identity mismatch detected!
+⚠ gitsetu: Identity mismatch detected!
   Expected: work@company.com (profile: work)
   Actual:   personal@gmail.com
 ```
 
-This is Gideon protecting you! The pre-commit hook detected that you are about to commit code using an email address that does not match the profile configured for this directory.
+This is GitSetu protecting you! The pre-commit hook detected that you are about to commit code using an email address that does not match the profile configured for this directory.
 
 **How to Fix:**
 1. You may be in the wrong directory.
@@ -96,14 +96,14 @@ This is Gideon protecting you! The pre-commit hook detected that you are about t
 
 If your Git or SSH environment is completely corrupted, the safest route is to wipe the slate clean and start over.
 
-1. **Safely remove all Gideon configurations:**
+1. **Safely remove all GitSetu configurations:**
    ```bash
-   ./gideon teardown
+   ./gitsetu teardown
    ```
-   *(This cleanly removes Gideon from `~/.gitconfig` and `~/.ssh/config` without touching your custom settings. It leaves your SSH keys safely on disk so you aren't locked out of GitHub).*
+   *(This cleanly removes GitSetu from `~/.gitconfig` and `~/.ssh/config` without touching your custom settings. It leaves your SSH keys safely on disk so you aren't locked out of GitHub).*
 
 2. **Re-run the setup:**
    ```bash
-   ./gideon setup
+   ./gitsetu setup
    ```
    When prompted about existing keys, select `skip (keep current)` to immediately restore your access without needing to upload new keys to GitHub.

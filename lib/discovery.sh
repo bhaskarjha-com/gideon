@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/discovery.sh — Auto-discovery engine for Gideon
+# lib/discovery.sh — Auto-discovery engine for GitSetu
 #
 # Scans the system for existing Git configurations, SSH keys,
 # and common workspace directories to pre-populate the setup blueprint.
@@ -20,12 +20,12 @@ discover_global_git_identity() {
         DISCOVERED_GLOBAL_EMAIL=$(git config --global user.email 2>/dev/null || true)
     fi
 
-    # 2. If name/email are empty, check if global.gitconfig exists (Gideon fallback)
-    if [[ -z "$DISCOVERED_GLOBAL_NAME" ]] && [[ -f "$HOME/.config/gideon/profiles/global.gitconfig" ]]; then
-        DISCOVERED_GLOBAL_NAME=$(git config --file "$HOME/.config/gideon/profiles/global.gitconfig" user.name 2>/dev/null || true)
+    # 2. If name/email are empty, check if global.gitconfig exists (GitSetu fallback)
+    if [[ -z "$DISCOVERED_GLOBAL_NAME" ]] && [[ -f "$HOME/.config/gitsetu/profiles/global.gitconfig" ]]; then
+        DISCOVERED_GLOBAL_NAME=$(git config --file "$HOME/.config/gitsetu/profiles/global.gitconfig" user.name 2>/dev/null || true)
     fi
-    if [[ -z "$DISCOVERED_GLOBAL_EMAIL" ]] && [[ -f "$HOME/.config/gideon/profiles/global.gitconfig" ]]; then
-        DISCOVERED_GLOBAL_EMAIL=$(git config --file "$HOME/.config/gideon/profiles/global.gitconfig" user.email 2>/dev/null || true)
+    if [[ -z "$DISCOVERED_GLOBAL_EMAIL" ]] && [[ -f "$HOME/.config/gitsetu/profiles/global.gitconfig" ]]; then
+        DISCOVERED_GLOBAL_EMAIL=$(git config --file "$HOME/.config/gitsetu/profiles/global.gitconfig" user.email 2>/dev/null || true)
     fi
 
     # 3. If email is STILL empty, try to extract it from SSH public keys

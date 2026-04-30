@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034  # All variables here are used by modules that source this file
-# lib/core.sh — Constants, version, and global state for gideon
+# lib/core.sh — Constants, version, and global state for gitsetu
 #
-# This file is sourced by the main gideon script.
+# This file is sourced by the main gitsetu script.
 # All variables defined here are available to all other modules.
 #
 # Bash 3.2 compatible: no associative arrays, no mapfile, no ${var,,}
@@ -11,28 +11,28 @@
 # Version
 # ------------------------------------------------------------------------------
 
-GIDEON_VERSION="1.0.0"
+GITSETU_VERSION="1.0.0"
 
 # ------------------------------------------------------------------------------
 # Directory layout (XDG-compliant)
 # ------------------------------------------------------------------------------
 
-GIDEON_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gideon"
-GIDEON_BACKUP_DIR="$GIDEON_CONFIG_DIR/backups"
-GIDEON_PROFILES_DIR="$GIDEON_CONFIG_DIR/profiles"
-GIDEON_HOOKS_DIR="$GIDEON_CONFIG_DIR/hooks"
-GIDEON_PROFILES_CONF="$GIDEON_CONFIG_DIR/profiles.conf"
+GITSETU_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu"
+GITSETU_BACKUP_DIR="$GITSETU_CONFIG_DIR/backups"
+GITSETU_PROFILES_DIR="$GITSETU_CONFIG_DIR/profiles"
+GITSETU_HOOKS_DIR="$GITSETU_CONFIG_DIR/hooks"
+GITSETU_PROFILES_CONF="$GITSETU_CONFIG_DIR/profiles.conf"
 
 # ------------------------------------------------------------------------------
 # Managed block markers
-# Used to identify sections in config files that gideon owns.
+# Used to identify sections in config files that gitsetu owns.
 # Everything between START and END markers is replaced on re-run (idempotent).
 # Content outside these markers is never touched.
 # ------------------------------------------------------------------------------
 
-GIDEON_MARKER_PREFIX="# [gideon:managed"
-GIDEON_MANAGED_START="# [gideon:managed:start]"
-GIDEON_MANAGED_END="# [gideon:managed:end]"
+GITSETU_MARKER_PREFIX="# [gitsetu:managed"
+GITSETU_MANAGED_START="# [gitsetu:managed:start]"
+GITSETU_MANAGED_END="# [gitsetu:managed:end]"
 
 # ------------------------------------------------------------------------------
 # Profile state (collected during wizard)
@@ -55,16 +55,16 @@ DEFAULT_PROFILE_INDEX=0
 # Runtime state
 # ------------------------------------------------------------------------------
 
-GIDEON_OS=""           # Set by detect_os(): linux, macos, wsl, gitbash, unknown
-GIDEON_DRY_RUN=0      # Set to 1 by --dry-run flag
-GIDEON_USE_PASSPHRASE=0 # Set to 1 to prompt for SSH passphrases
+GITSETU_OS=""           # Set by detect_os(): linux, macos, wsl, gitbash, unknown
+GITSETU_DRY_RUN=0      # Set to 1 by --dry-run flag
+GITSETU_USE_PASSPHRASE=0 # Set to 1 to prompt for SSH passphrases
 
 # ------------------------------------------------------------------------------
 # load_profiles — Reads registry into arrays
 # ------------------------------------------------------------------------------
 load_profiles() {
     PROFILE_COUNT=0
-    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
+    if [[ ! -f "$GITSETU_PROFILES_CONF" ]]; then
         return 0
     fi
     local label email dir provider sign_commits key_path
@@ -84,9 +84,9 @@ load_profiles() {
         # Where is name? We never saved it! It's derived from global git config usually?
         PROFILE_NAMES+=("$(git config --global user.name 2>/dev/null || echo "")")
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
-    done < "$GIDEON_PROFILES_CONF"
+    done < "$GITSETU_PROFILES_CONF"
 }
-GIDEON_SCRIPT_DIR="${GIDEON_SCRIPT_DIR:-}"   # Preserve value set by main script
+GITSETU_SCRIPT_DIR="${GITSETU_SCRIPT_DIR:-}"   # Preserve value set by main script
 
 # ------------------------------------------------------------------------------
 # Helper: lowercase a string (bash 3.2 compatible)

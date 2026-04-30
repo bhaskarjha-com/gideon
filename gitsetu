@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# gideon — One command. All identities. Every machine.
+# gitsetu — One command. All identities. Every machine.
 #
 # A zero-dependency CLI tool for automated Git multi-identity
 # and SSH key setup. Clone, run, done.
 #
-# Usage: ./gideon setup [--dry-run]
-#        ./gideon status
-#        ./gideon verify
-#        ./gideon guard --install | --uninstall
-#        ./gideon --help | --version
+# Usage: ./gitsetu setup [--dry-run]
+#        ./gitsetu status
+#        ./gitsetu verify
+#        ./gitsetu guard --install | --uninstall
+#        ./gitsetu --help | --version
 #
-# https://github.com/bhaskarjha-com/gideon
+# https://github.com/bhaskarjha-com/gitsetu
 # MIT License — Bhaskar Jha
 
 # --- CRLF self-healing for VirtualBox shared folders ---
@@ -18,7 +18,7 @@
 # tr -d '\r' is a no-op on clean files, so this is safe everywhere.
 if ! command -v tr >/dev/null 2>&1; then echo "Error: 'tr' command is required but not found." >&2; exit 1; fi
 # shellcheck disable=SC2270
-test "${GIDEON_CRLF_CLEAN:-}" = "1" || { export GIDEON_CRLF_CLEAN=1; export GIDEON_ORIG_SCRIPT="${BASH_SOURCE[0]:-$0}"; exec bash <(tr -d '\r' < "${BASH_SOURCE[0]:-$0}") "$@"; }
+test "${GITSETU_CRLF_CLEAN:-}" = "1" || { export GITSETU_CRLF_CLEAN=1; export GITSETU_ORIG_SCRIPT="${BASH_SOURCE[0]:-$0}"; exec bash <(tr -d '\r' < "${BASH_SOURCE[0]:-$0}") "$@"; }
 
 set -euo pipefail
 
@@ -27,10 +27,10 @@ set -euo pipefail
 # ------------------------------------------------------------------------------
 resolve_script_dir() {
     # When re-executed for CRLF cleaning, BASH_SOURCE is /dev/fd/N.
-    # Use GIDEON_ORIG_SCRIPT (set before re-exec) to find the real script.
+    # Use GITSETU_ORIG_SCRIPT (set before re-exec) to find the real script.
     # Strip \r because the env var was set from a CRLF-contaminated line.
     local source
-    source=$(printf '%s' "${GIDEON_ORIG_SCRIPT:-${BASH_SOURCE[0]:-$0}}" | tr -d '\r')
+    source=$(printf '%s' "${GITSETU_ORIG_SCRIPT:-${BASH_SOURCE[0]:-$0}}" | tr -d '\r')
 
     # If source is empty or just a basename, try $0
     if [[ -z "$source" ]] || [[ "$source" == "bash" ]]; then
@@ -57,29 +57,29 @@ resolve_script_dir() {
     printf '%s' "$dir"
 }
 
-GIDEON_SCRIPT_DIR=$(resolve_script_dir | tr -d '\r')
+GITSETU_SCRIPT_DIR=$(resolve_script_dir | tr -d '\r')
 
 # ------------------------------------------------------------------------------
 # Source all library modules
 # Strip \r from sourced files for vboxsf compatibility
 # ------------------------------------------------------------------------------
-gideon_source() {
+gitsetu_source() {
     # shellcheck disable=SC1090
     eval "$(tr -d '\r' < "$1")"
 }
-gideon_source "$GIDEON_SCRIPT_DIR/lib/core.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/platform.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/ui.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/validate.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/backup.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/ssh.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/gitconfig.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/guard.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/doctor.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/verify.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/teardown.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/discovery.sh"
-gideon_source "$GIDEON_SCRIPT_DIR/lib/setup.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/core.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/platform.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/ui.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/validate.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/backup.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/ssh.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/gitconfig.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/guard.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/doctor.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/verify.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/teardown.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/discovery.sh"
+gitsetu_source "$GITSETU_SCRIPT_DIR/lib/setup.sh"
 
 # ------------------------------------------------------------------------------
 # Signal trap — clean exit on Ctrl+C
@@ -96,50 +96,50 @@ trap cleanup SIGINT SIGTERM
 # ------------------------------------------------------------------------------
 show_help() {
     cat >&2 <<EOF
-${BOLD}gideon${RESET} v${GIDEON_VERSION} — One command. All identities. Every machine.
+${BOLD}gitsetu${RESET} v${GITSETU_VERSION} — One command. All identities. Every machine.
 
 ${BOLD}USAGE${RESET}
-    gideon setup [--dry-run]        Interactive setup wizard
-    gideon status                   Show current identity configuration
-    gideon verify                   Test SSH keys and git config
-    gideon run <profile> -- <cmd>   Run command as specific identity
-    gideon teardown [--force]       Remove all gideon configurations
-    gideon guard --install          Install pre-commit identity guard hook
-    gideon guard --uninstall        Remove the guard hook
-    gideon --help, -h               Show this help
-    gideon --version, -v            Show version
+    gitsetu setup [--dry-run]        Interactive setup wizard
+    gitsetu status                   Show current identity configuration
+    gitsetu verify                   Test SSH keys and git config
+    gitsetu run <profile> -- <cmd>   Run command as specific identity
+    gitsetu teardown [--force]       Remove all gitsetu configurations
+    gitsetu guard --install          Install pre-commit identity guard hook
+    gitsetu guard --uninstall        Remove the guard hook
+    gitsetu --help, -h               Show this help
+    gitsetu --version, -v            Show version
 
 ${BOLD}DESCRIPTION${RESET}
-    gideon automates the setup of multiple Git identities and SSH keys.
+    gitsetu automates the setup of multiple Git identities and SSH keys.
     It generates Ed25519 SSH keys, creates ~/.gitconfig with conditional
     includes, sets up ~/.ssh/config host aliases, and verifies everything
     works — all in a single interactive session.
 
 ${BOLD}EXAMPLES${RESET}
     ${DIM}# First-time setup:${RESET}
-    git clone https://github.com/bhaskarjha-com/gideon.git
-    cd gideon
-    ./gideon setup
+    git clone https://github.com/bhaskarjha-com/gitsetu.git
+    cd gitsetu
+    ./gitsetu setup
 
     ${DIM}# Preview what setup would do:${RESET}
-    ./gideon setup --dry-run
+    ./gitsetu setup --dry-run
 
     ${DIM}# Check current identity:${RESET}
-    ./gideon status
+    ./gitsetu status
 
     ${DIM}# Run git as a specific profile:${RESET}
-    ./gideon run work -- git commit -m "fix"
+    ./gitsetu run work -- git commit -m "fix"
 
     ${DIM}# Install commit safety net:${RESET}
-    ./gideon guard --install
+    ./gitsetu guard --install
 
 ${BOLD}MORE INFO${RESET}
-    https://github.com/bhaskarjha-com/gideon
+    https://github.com/bhaskarjha-com/gitsetu
 EOF
 }
 
 show_version() {
-    printf 'gideon v%s\n' "$GIDEON_VERSION"
+    printf 'gitsetu v%s\n' "$GITSETU_VERSION"
 }
 
 # ------------------------------------------------------------------------------
@@ -174,7 +174,7 @@ cmd_status() {
     printf >&2 '  %b└───────────────────────────────────────────────┘%b\n\n' "$DIM" "$RESET"
 
     # Show profile registry if it exists
-    if [[ -f "$GIDEON_PROFILES_CONF" ]]; then
+    if [[ -f "$GITSETU_PROFILES_CONF" ]]; then
         print_section "Configured Profiles"
 
         while IFS=: read -r label email dir provider sign_commits key_path || [[ -n "$label" ]]; do
@@ -194,17 +194,17 @@ cmd_status() {
             printf >&2 '    %b├─%b %-9s %s\n' "$DIM" "$RESET" "Email:" "$email"
             printf >&2 '    %b├─%b %-9s %s\n' "$DIM" "$RESET" "Provider:" "$prov_disp"
             printf >&2 '    %b└─%b %-9s %s\n\n' "$DIM" "$RESET" "Path:" "$dir_disp"
-        done < "$GIDEON_PROFILES_CONF"
+        done < "$GITSETU_PROFILES_CONF"
     else
-        print_info "No profiles configured. Run 'gideon setup' to get started."
+        print_info "No profiles configured. Run 'gitsetu setup' to get started."
     fi
 
     # Platform info
     print_section "Environment"
-    printf >&2 '  OS:       %s\n' "$GIDEON_OS"
+    printf >&2 '  OS:       %s\n' "$GITSETU_OS"
     printf >&2 '  Bash:     %s\n' "${BASH_VERSION:-unknown}"
     printf >&2 '  Git:      %s\n' "$(git --version 2>/dev/null | head -n1)"
-    printf >&2 '  Config:   %s\n' "$GIDEON_CONFIG_DIR"
+    printf >&2 '  Config:   %s\n' "$GITSETU_CONFIG_DIR"
     printf >&2 '\n'
 }
 
@@ -216,8 +216,8 @@ cmd_verify() {
     print_header
 
     # Load profiles from registry
-    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
-        print_error "No profiles configured. Run 'gideon setup' first."
+    if [[ ! -f "$GITSETU_PROFILES_CONF" ]]; then
+        print_error "No profiles configured. Run 'gitsetu setup' first."
         return 1
     fi
 
@@ -225,7 +225,7 @@ cmd_verify() {
     load_profiles
 
     if [[ "$PROFILE_COUNT" -eq 0 ]]; then
-        print_error "No profiles found in registry. Run 'gideon setup' first."
+        print_error "No profiles found in registry. Run 'gitsetu setup' first."
         return 1
     fi
 
@@ -233,25 +233,25 @@ cmd_verify() {
 }
 
 # ------------------------------------------------------------------------------
-# cmd_teardown — Remove all gideon configurations
+# cmd_teardown — Remove all gitsetu configurations
 # ------------------------------------------------------------------------------
 cmd_teardown() {
     detect_os
     print_header
 
-    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+    if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
         print_info "DRY RUN MODE — no files will be written/deleted"
         printf >&2 '\n'
     fi
 
     local force="${1:-0}"
 
-    if [[ "$force" -eq 0 ]] && [[ "$GIDEON_DRY_RUN" -eq 0 ]]; then
-        print_warning "This will remove all Gideon configurations:"
+    if [[ "$force" -eq 0 ]] && [[ "$GITSETU_DRY_RUN" -eq 0 ]]; then
+        print_warning "This will remove all GitSetu configurations:"
         printf >&2 "  - Remove managed blocks from ~/.gitconfig\n"
         printf >&2 "  - Remove managed blocks from ~/.ssh/config\n"
         printf >&2 "  - Uninstall the commit guard hook\n"
-        printf >&2 "  - Delete the ~/.config/gideon directory\n\n"
+        printf >&2 "  - Delete the ~/.config/gitsetu directory\n\n"
         if ! confirm "Are you sure you want to proceed?" "n"; then
             print_info "Teardown cancelled."
             return 0
@@ -268,14 +268,14 @@ cmd_setup() {
     detect_os
     print_header
 
-    if [[ "$GIDEON_DRY_RUN" -eq 1 ]]; then
+    if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
         print_info "DRY RUN MODE — no files will be written"
         printf >&2 '\n'
     fi
 
     # --- Preflight ---
     print_section "Preflight Checks"
-    printf >&2 '  OS detected: %b%s%b\n' "$BOLD" "$GIDEON_OS" "$RESET"
+    printf >&2 '  OS detected: %b%s%b\n' "$BOLD" "$GITSETU_OS" "$RESET"
 
     if ! check_prerequisites; then
         return 1
@@ -291,7 +291,7 @@ cmd_setup() {
     # Check if TTY
     if [[ ! -t 1 ]]; then
         print_error "Headless setup via args is not yet fully implemented in this block."
-        print_error "Use 'gideon profile add' for headless mode."
+        print_error "Use 'gitsetu profile add' for headless mode."
         return 1
     fi
 
@@ -308,20 +308,20 @@ cmd_run() {
     shift
     
     if [[ -z "$profile" ]]; then
-        print_error "Usage: gideon run <profile> -- <command>"
+        print_error "Usage: gitsetu run <profile> -- <command>"
         return 1
     fi
     
     if [[ "$1" == "--" ]]; then shift; fi
     
     if [[ $# -eq 0 ]]; then
-        print_error "No command provided. Usage: gideon run <profile> -- <command>"
+        print_error "No command provided. Usage: gitsetu run <profile> -- <command>"
         return 1
     fi
     
     # Check if profile exists
-    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
-        print_error "No profiles configured. Run 'gideon setup' first."
+    if [[ ! -f "$GITSETU_PROFILES_CONF" ]]; then
+        print_error "No profiles configured. Run 'gitsetu setup' first."
         return 1
     fi
 
@@ -333,7 +333,7 @@ cmd_run() {
             found_key_path="${key_path:-$HOME/.ssh/id_ed25519_${label}}"
             break
         fi
-    done < "$GIDEON_PROFILES_CONF"
+    done < "$GITSETU_PROFILES_CONF"
     
     if [[ "$found" -eq 0 ]]; then
         print_error "Profile '$profile' not found in registry."
@@ -341,7 +341,7 @@ cmd_run() {
     fi
     
     local name email
-    local config_file="$GIDEON_PROFILES_DIR/${profile}.gitconfig"
+    local config_file="$GITSETU_PROFILES_DIR/${profile}.gitconfig"
     
     if [[ ! -f "$config_file" ]]; then
         # Global profile (stored in ~/.gitconfig)
@@ -369,11 +369,11 @@ cmd_remove() {
     local profile="$1"
     
     if [[ -z "$profile" ]]; then
-        print_error "Usage: gideon remove <profile>"
+        print_error "Usage: gitsetu remove <profile>"
         return 1
     fi
     
-    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
+    if [[ ! -f "$GITSETU_PROFILES_CONF" ]]; then
         print_error "No profiles configured."
         return 1
     fi
@@ -387,7 +387,7 @@ cmd_remove() {
             found_key_path="${key_path:-$HOME/.ssh/id_ed25519_${label}}"
             break
         fi
-    done < "$GIDEON_PROFILES_CONF"
+    done < "$GITSETU_PROFILES_CONF"
     
     if [[ "$found" -eq 0 ]]; then
         print_error "Profile '$profile' not found."
@@ -403,12 +403,12 @@ cmd_remove() {
     
     # 1. Remove from profiles.conf using awk (sed is non-portable across BSD/GNU without weird syntax)
     local tmp_conf
-    tmp_conf=$(mktemp "${GIDEON_PROFILES_CONF}.tmp.XXXXXX")
-    awk -F: -v prof="$profile" '$1 != prof {print}' "$GIDEON_PROFILES_CONF" > "$tmp_conf"
-    mv "$tmp_conf" "$GIDEON_PROFILES_CONF"
+    tmp_conf=$(mktemp "${GITSETU_PROFILES_CONF}.tmp.XXXXXX")
+    awk -F: -v prof="$profile" '$1 != prof {print}' "$GITSETU_PROFILES_CONF" > "$tmp_conf"
+    mv "$tmp_conf" "$GITSETU_PROFILES_CONF"
     
     # 2. Delete the profile gitconfig
-    local config_file="$GIDEON_PROFILES_DIR/${profile}.gitconfig"
+    local config_file="$GITSETU_PROFILES_DIR/${profile}.gitconfig"
     if [[ -f "$config_file" ]]; then
         rm -f "$config_file"
     fi
@@ -438,7 +438,7 @@ cmd_remove() {
         PROFILE_SIGNS+=("${sign_commits:-0}")
         PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
-    done < "$GIDEON_PROFILES_CONF"
+    done < "$GITSETU_PROFILES_CONF"
     
     # Note: We do not reload PROFILE_NAMES from the conf because we never stored them there!
     # Wait, write_global_gitconfig relies on PROFILE_NAMES for the default profile...
@@ -485,7 +485,7 @@ cmd_init() {
         local found=0
         while IFS=: read -r label email dir provider sign_commits key_path || [[ -n "$label" ]]; do
             if [[ "$label" == "$active_profile" ]]; then found=1; break; fi
-        done < "$GIDEON_PROFILES_CONF"
+        done < "$GITSETU_PROFILES_CONF"
         if [[ "$found" -eq 0 ]]; then
             print_error "Profile '$active_profile' not found."
             return 1
@@ -494,8 +494,8 @@ cmd_init() {
         # Detect from PWD
         active_profile=$(cmd_prompt)
         if [[ -z "$active_profile" ]]; then
-            print_error "Current directory does not match any Gideon profile path."
-            print_info "Provide a profile explicitly: gideon init --profile <name>"
+            print_error "Current directory does not match any GitSetu profile path."
+            print_info "Provide a profile explicitly: gitsetu init --profile <name>"
             return 1
         fi
     fi
@@ -511,7 +511,7 @@ cmd_init() {
     # 3. Scaffold Templates (if empty)
     # Only copy templates if the repo is empty (no commits yet) to avoid overwriting existing files
     if ! git rev-parse HEAD >/dev/null 2>&1; then
-        local template_dir="$HOME/.config/gideon/templates/$active_profile"
+        local template_dir="$HOME/.config/gitsetu/templates/$active_profile"
         if [[ -d "$template_dir" ]]; then
             print_step "Applying templates for profile '$active_profile'..."
             cp -n "$template_dir"/* . 2>/dev/null || true
@@ -524,7 +524,7 @@ cmd_init() {
         print_step "Retrofitting repository to enforce profile '$active_profile'..."
         # Get profile details
         local p_name p_email p_key
-        local config_file="$GIDEON_PROFILES_DIR/${active_profile}.gitconfig"
+        local config_file="$GITSETU_PROFILES_DIR/${active_profile}.gitconfig"
         if [[ -f "$config_file" ]]; then
             p_name=$(git config -f "$config_file" user.name)
             p_email=$(git config -f "$config_file" user.email)
@@ -547,7 +547,7 @@ cmd_init() {
 # cmd_prompt — Zero-latency profile detection for PS1 integration
 # ------------------------------------------------------------------------------
 cmd_prompt() {
-    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
+    if [[ ! -f "$GITSETU_PROFILES_CONF" ]]; then
         return 0
     fi
 
@@ -570,7 +570,7 @@ cmd_prompt() {
                 matched_profile="$label"
             fi
         fi
-    done < "$GIDEON_PROFILES_CONF"
+    done < "$GITSETU_PROFILES_CONF"
 
     if [[ -n "$matched_profile" ]]; then
         echo "$matched_profile"
@@ -591,18 +591,18 @@ cmd_doctor() {
 main() {
     # No arguments → show brief usage
     if [[ $# -eq 0 ]]; then
-        printf >&2 '%bgideon%b v%s — One command. All identities. Every machine.\n\n' \
-            "$BOLD" "$RESET" "$GIDEON_VERSION"
-        printf >&2 'Usage: gideon setup [--dry-run]    Start the setup wizard\n'
-        printf >&2 '       gideon status               Show current identity\n'
-        printf >&2 '       gideon verify               Test SSH and git config\n'
-        printf >&2 '       gideon init [--profile <name>] Scaffolds/retrofits a repo\n'
-        printf >&2 '       gideon prompt               Print active profile (for PS1)\n'
-        printf >&2 '       gideon run <profile> -- <cmd>  Run as identity\n'
-        printf >&2 '       gideon remove <profile>     Remove a specific profile\n'
-        printf >&2 '       gideon teardown [--force]   Remove all configurations\n'
-        printf >&2 '       gideon guard --install      Install commit guard hook\n'
-        printf >&2 '       gideon --help                Full help\n\n'
+        printf >&2 '%bgitsetu%b v%s — One command. All identities. Every machine.\n\n' \
+            "$BOLD" "$RESET" "$GITSETU_VERSION"
+        printf >&2 'Usage: gitsetu setup [--dry-run]    Start the setup wizard\n'
+        printf >&2 '       gitsetu status               Show current identity\n'
+        printf >&2 '       gitsetu verify               Test SSH and git config\n'
+        printf >&2 '       gitsetu init [--profile <name>] Scaffolds/retrofits a repo\n'
+        printf >&2 '       gitsetu prompt               Print active profile (for PS1)\n'
+        printf >&2 '       gitsetu run <profile> -- <cmd>  Run as identity\n'
+        printf >&2 '       gitsetu remove <profile>     Remove a specific profile\n'
+        printf >&2 '       gitsetu teardown [--force]   Remove all configurations\n'
+        printf >&2 '       gitsetu guard --install      Install commit guard hook\n'
+        printf >&2 '       gitsetu --help                Full help\n\n'
         return 0
     fi
 
@@ -615,17 +615,20 @@ main() {
             while [[ $# -gt 0 ]]; do
                 case "$1" in
                     --dry-run)
-                        GIDEON_DRY_RUN=1
+                        GITSETU_DRY_RUN=1
                         shift
                         ;;
                     *)
                         print_error "Unknown flag: $1"
-                        printf >&2 'Usage: gideon setup [--dry-run]\n'
+                        printf >&2 'Usage: gitsetu setup [--dry-run]\n'
                         return 1
                         ;;
                 esac
             done
             cmd_setup
+            ;;
+        add)
+            cmd_add "$@"
             ;;
         status)
             cmd_status
@@ -635,7 +638,7 @@ main() {
             ;;
         run)
             if [[ $# -lt 1 ]]; then
-                print_error "Usage: gideon run <profile> -- <command>"
+                print_error "Usage: gitsetu run <profile> -- <command>"
                 return 1
             fi
             cmd_run "$@"
@@ -656,11 +659,11 @@ main() {
             local force=0
             while [[ $# -gt 0 ]]; do
                 case "$1" in
-                    --dry-run) GIDEON_DRY_RUN=1 ;;
+                    --dry-run) GITSETU_DRY_RUN=1 ;;
                     --force|-f) force=1 ;;
                     *)
                         print_error "Unknown flag: $1"
-                        printf >&2 'Usage: gideon teardown [--dry-run] [--force]\n'
+                        printf >&2 'Usage: gitsetu teardown [--dry-run] [--force]\n'
                         return 1
                         ;;
                 esac
@@ -670,7 +673,7 @@ main() {
             ;;
         guard)
             if [[ $# -eq 0 ]]; then
-                print_error "Usage: gideon guard --install | --uninstall"
+                print_error "Usage: gitsetu guard --install | --uninstall"
                 return 1
             fi
             case "$1" in
@@ -678,7 +681,7 @@ main() {
                 --uninstall) detect_os; uninstall_guard ;;
                 *)
                     print_error "Unknown flag: $1"
-                    printf >&2 'Usage: gideon guard --install | --uninstall\n'
+                    printf >&2 'Usage: gitsetu guard --install | --uninstall\n'
                     return 1
                     ;;
             esac
@@ -694,7 +697,7 @@ main() {
             ;;
         *)
             print_error "Unknown command: $cmd"
-            printf >&2 'Run "gideon --help" for usage.\n'
+            printf >&2 'Run "gitsetu --help" for usage.\n'
             return 1
             ;;
     esac

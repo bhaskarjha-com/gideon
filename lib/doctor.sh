@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/doctor.sh — Gideon Diagnostics Module
+# lib/doctor.sh — GitSetu Diagnostics Module
 #
 # Analyzes the current environment to help users troubleshoot Git identity issues.
 
@@ -7,7 +7,7 @@
 # run_doctor — Execute system diagnostics
 # ------------------------------------------------------------------------------
 run_doctor() {
-    print_section "Gideon Diagnostics (Doctor)"
+    print_section "GitSetu Diagnostics (Doctor)"
 
     # 1. Determine active profile based on PWD
     local current_dir="$PWD"
@@ -81,20 +81,20 @@ run_doctor() {
     printf "\n"
     
     # 4. Check Config Integrity
-    printf "  %bGideon Integrity:%b\n" "$BOLD" "$RESET"
-    if [[ ! -f "$GIDEON_PROFILES_CONF" ]]; then
-        printf "    %bERROR: Registry missing at %s%b\n" "$RED" "$GIDEON_PROFILES_CONF" "$RESET"
+    printf "  %bGitSetu Integrity:%b\n" "$BOLD" "$RESET"
+    if [[ ! -f "$GITSETU_PROFILES_CONF" ]]; then
+        printf "    %bERROR: Registry missing at %s%b\n" "$RED" "$GITSETU_PROFILES_CONF" "$RESET"
     else
         printf "    Registry: OK\n"
     fi
     
-    if grep -qF "${GIDEON_MANAGED_START}" "$HOME/.gitconfig" 2>/dev/null; then
+    if grep -qF "${GITSETU_MANAGED_START}" "$HOME/.gitconfig" 2>/dev/null; then
         printf "    ~/.gitconfig: OK (Managed blocks present)\n"
     else
         printf "    ~/.gitconfig: %bWARNING (Managed blocks missing)%b\n" "$YELLOW" "$RESET"
     fi
 
-    if grep -qF "${GIDEON_MANAGED_START}" "$HOME/.ssh/config" 2>/dev/null; then
+    if grep -qF "${GITSETU_MANAGED_START}" "$HOME/.ssh/config" 2>/dev/null; then
         printf "    ~/.ssh/config: OK (Managed blocks present)\n"
     else
         printf "    ~/.ssh/config: %bWARNING (Managed blocks missing)%b\n" "$YELLOW" "$RESET"

@@ -3,22 +3,22 @@
 # tests/test_teardown.sh — Tests for lib/teardown.sh
 set -euo pipefail
 
-# Find the test directory and gideon root
+# Find the test directory and gitsetu root
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GIDEON_ROOT="$(dirname "$TEST_DIR")"
+GITSETU_ROOT="$(dirname "$TEST_DIR")"
 
 # Source test helpers
 source "$TEST_DIR/helpers.sh"
 
-# Source gideon modules needed for testing
-source "$GIDEON_ROOT/lib/core.sh"
-source "$GIDEON_ROOT/lib/platform.sh"
-source "$GIDEON_ROOT/lib/ui.sh"
-source "$GIDEON_ROOT/lib/backup.sh"
-source "$GIDEON_ROOT/lib/ssh.sh"
-source "$GIDEON_ROOT/lib/gitconfig.sh"
-source "$GIDEON_ROOT/lib/guard.sh"
-source "$GIDEON_ROOT/lib/teardown.sh"
+# Source gitsetu modules needed for testing
+source "$GITSETU_ROOT/lib/core.sh"
+source "$GITSETU_ROOT/lib/platform.sh"
+source "$GITSETU_ROOT/lib/ui.sh"
+source "$GITSETU_ROOT/lib/backup.sh"
+source "$GITSETU_ROOT/lib/ssh.sh"
+source "$GITSETU_ROOT/lib/gitconfig.sh"
+source "$GITSETU_ROOT/lib/guard.sh"
+source "$GITSETU_ROOT/lib/teardown.sh"
 
 detect_os
 
@@ -69,34 +69,34 @@ setup() {
 test_teardown_removes_gitconfig_block() {
     setup
     
-    assert_file_contains "$HOME/.gitconfig" "[gideon:managed:start]"
+    assert_file_contains "$HOME/.gitconfig" "[gitsetu:managed:start]"
     
     teardown_gitconfig >/dev/null 2>&1
     
-    assert_file_not_contains "$HOME/.gitconfig" "[gideon:managed:start]"
+    assert_file_not_contains "$HOME/.gitconfig" "[gitsetu:managed:start]"
     assert_file_contains "$HOME/.gitconfig" "st = status"
 }
 
 test_teardown_removes_sshconfig_blocks() {
     setup
     
-    assert_file_contains "$HOME/.ssh/config" "[gideon:managed:start]"
+    assert_file_contains "$HOME/.ssh/config" "[gitsetu:managed:start]"
     
     teardown_sshconfig >/dev/null 2>&1
     
-    assert_file_not_contains "$HOME/.ssh/config" "[gideon:managed:start]"
+    assert_file_not_contains "$HOME/.ssh/config" "[gitsetu:managed:start]"
     assert_file_contains "$HOME/.ssh/config" "Host my-server"
 }
 
 test_teardown_removes_config_dir() {
     setup
     
-    assert_dir_exists "$GIDEON_CONFIG_DIR"
+    assert_dir_exists "$GITSETU_CONFIG_DIR"
     
     teardown_config_dir >/dev/null 2>&1
     
     # assert_dir_not_exists doesn't exist in helpers, so manually check and return 1 if dir still exists
-    if [[ -d "$GIDEON_CONFIG_DIR" ]]; then
+    if [[ -d "$GITSETU_CONFIG_DIR" ]]; then
         printf '    FAIL: Config dir should be removed\n'
         return 1
     fi
@@ -105,11 +105,11 @@ test_teardown_removes_config_dir() {
 test_teardown_uninstalls_guard() {
     setup
     
-    assert_file_exists "$GIDEON_HOOKS_DIR/pre-commit"
+    assert_file_exists "$GITSETU_HOOKS_DIR/pre-commit"
     
     uninstall_guard >/dev/null 2>&1
     
-    if [[ -f "$GIDEON_HOOKS_DIR/pre-commit" ]]; then
+    if [[ -f "$GITSETU_HOOKS_DIR/pre-commit" ]]; then
         printf '    FAIL: Guard hook should be removed\n'
         return 1
     fi
@@ -136,7 +136,7 @@ test_teardown_keeps_ssh_keys() {
 
 run_test "teardown_gitconfig removes managed block but keeps user content" test_teardown_removes_gitconfig_block
 run_test "teardown_sshconfig removes managed blocks but keeps user content" test_teardown_removes_sshconfig_blocks
-run_test "teardown_config_dir completely removes ~/.config/gideon" test_teardown_removes_config_dir
+run_test "teardown_config_dir completely removes ~/.config/gitsetu" test_teardown_removes_config_dir
 run_test "uninstall_guard removes hook and unsets core.hooksPath" test_teardown_uninstalls_guard
 run_test "teardown_all leaves generated SSH keys intact for safety" test_teardown_keeps_ssh_keys
 

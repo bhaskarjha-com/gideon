@@ -3,7 +3,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
-source_gideon_libs
+source_gitsetu_libs
 
 # --- Email tests ---
 

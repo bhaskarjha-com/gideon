@@ -1,11 +1,10 @@
 <div align="center">
 
-![Gideon Logo](docs/assets/logo.png)
+# GitSetu 
+*(git · se · tu)* / Sanskrit: bridge
 
-# gideon
-
-**The Zero-Dependency Git Identity Orchestrator.**  
-*One command. All identities. Every machine.*
+**The bridge between your identities and your repositories.**  
+*Zero deps. No daemon. Pure bash.*
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen)](.github/workflows/ci.yml)
 [![ShellCheck](https://img.shields.io/badge/ShellCheck-passing-brightgreen)](https://www.shellcheck.net/)
@@ -15,55 +14,41 @@
 
 <br/>
 
-> **[🎥 Watch the 60-Second Demo](#)** *(Placeholder for Asciinema GIF)*
-
 </div>
 
 ---
 
-## ⚡ Why We Built Gideon
+## 01. The Problem
 
-We noticed a gap in the ecosystem. As engineers, we often work with multiple Git identities — personal, work, freelance, and open-source. Setting up a new machine, VM, or container meant spending an hour reading tutorials to manually generate SSH keys, edit `~/.gitconfig`, configure `~/.ssh/config`, and upload keys to GitHub. 
+**Wrong author commits**
+You push a freelance project and your work email shows up in the git log. Your client sees your employer's domain.
 
-There are many excellent tools to help *switch* identities, but none of them actually bootstrapped the infrastructure from scratch without requiring a Go or Node.js package manager.
+**SSH key collisions**
+One SSH key for three GitHub accounts means GitHub can't tell who you are. Pushes fail, permissions break.
 
-**We built Gideon to obliterate this workflow in 60 seconds.**
+**Manual global config**
+You edit `~/.gitconfig` before every context switch. Then you forget. Again.
 
-Gideon is a pure-Bash CLI tool that bootstraps your entire Git identity infrastructure from scratch. It asks you a few questions, generates the secure Ed25519 SSH keys, wires up your configurations, and silently enforces the correct identity based on the directory you are working in.
-
-### 🚀 Quick Start
-
-Install Gideon instantly to your `~/.local/bin` using the automated script:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/bhaskarjha-com/gideon/main/install.sh | bash
-```
-
-Once installed, run the interactive bootstrapper:
-
-```bash
-gideon setup
-```
-
-Answer the prompts, copy the generated public keys to your Git provider, and you're done. No dependencies. No runtimes. No hassle.
+**Heavy tooling**
+Every solution requires Node, Python, or a background daemon watching your filesystem. Just to change a name.
 
 ---
 
-## ✨ The "Magical Clone" Workflow
+## 02. How GitSetu Works
 
-Gideon provides a completely frictionless, alias-free experience. 
+GitSetu automatically manages multiple Git identities and SSH keys on a single machine. It provisions distinct keys, injects directory-based conditional configs, and writes SSH host aliases — so you never accidentally commit as the wrong author ever again.
 
-Other multi-identity tools require you to memorize custom SSH host aliases (like `git clone git@github-work:company/repo.git`). We fundamentally reject this design. With Gideon, you just clone normally.
+1. **You declare an identity:** Run `gitsetu add`. Name, email, directory scope.
+2. **GitSetu provisions a dedicated SSH key:** Generates a unique ED25519 SSH keypair cleanly stored under `~/.ssh/gitsetu/`. No shared keys between accounts.
+3. **Writes a scoped `~/.gitconfig` include:** Injects an `includeIf` block that activates your name and email — only inside that directory tree.
+4. **Creates an SSH host alias:** Writes a `Host` block in `~/.ssh/config`. 
 
-1. **`cd` into your profile directory** (e.g., `cd ~/dev/work`)
-2. **Clone normally**: `git clone git@github.com:company/repo.git`
-
-### How is this possible?
-Gideon leverages Git's native `includeIf` conditional rules. During the clone process, Git initializes the folder locally, immediately triggers Gideon's `includeIf` rule, reads the `core.sshCommand` for that specific profile, and **dynamically injects the correct SSH key mid-flight** before the connection to GitHub is ever made. 
+### The "Magical Clone" Workflow
+Other tools require you to memorize custom SSH host aliases (`git clone git@github-work:repo.git`). We reject this. With GitSetu, you just clone normally. Git's native `includeIf` intercepts the clone mid-flight and injects the correct key.
 
 ```mermaid
 graph TD
-    A[cd ~/dev/work] --> B[git clone git@github.com:repo]
+    A[cd ~/work] --> B[git clone git@github.com:repo]
     B --> C{Git creates local .git}
     C --> D[Trigger includeIf rule]
     D --> E[Inject work SSH Key]
@@ -73,39 +58,74 @@ graph TD
     class D,E highlight;
 ```
 
-*(For power users who prefer host-aliases over directory intercepts, Gideon fully supports **Manual Mode**. Just press `Enter` during the directory prompt.)*
+---
+
+## 03. Quick Start
+
+**1. Install GitSetu:**
+```bash
+curl -sL https://raw.githubusercontent.com/bhaskarjha-com/gitsetu/main/install.sh | bash
+```
+
+**2. Add your identities once:**
+```bash
+$ gitsetu add personal "Aditya Kumar" aditya@gmail.com ~/personal
+$ gitsetu add work "Aditya Kumar" aditya@company.com ~/work
+$ gitsetu add freelance "AK Dev" ak@freelance.io ~/clients
+```
+*(Prefer a guided setup? Just run `gitsetu setup` to launch the interactive TUI).*
+
+**3. Verify your setup:**
+```bash
+$ gitsetu status
+personal aditya@gmail.com ~/personal ✓ active
+work aditya@company.com ~/work
+freelance ak@freelance.io ~/clients
+```
+
+**4. From now on — just `cd` and work. GitSetu does the rest.**
+```text
+$ cd ~/work/my-api && git commit -m "fix: auth bug"
+Author: Aditya Kumar <aditya@company.com> ← correct, automatically
+```
 
 ---
 
-## 🛡️ Identity Guard Hook
+## 04. What You Get
+
+- **zero dependency:** Pure Bash. No Node. No Python. No package manager.
+- **no daemon:** GitSetu writes config once and lets Git's native `includeIf` do the switching. Zero background processes. Zero memory footprint.
+- **directory-scoped:** Identity follows your cursor. Enter `~/work` — you're your work self.
+- **ssh isolated:** Each profile gets its own ED25519 keypair and SSH host alias.
+- **non-destructive:** Your existing config is safe. GitSetu appends to `~/.gitconfig` and `~/.ssh/config` with clearly marked blocks. Uninstall removes exactly what it added.
+- **open standard:** No lock-in. GitSetu generates standard Git config and standard SSH config. You can read, edit, or delete what it creates.
+
+---
+
+## 05. The "Identity Guard"
 
 Ever accidentally pushed a commit to your company repository using your `anime_fan_99@gmail.com` email address? 
 
-Gideon includes a global pre-commit hook that actively monitors your `$PWD` and blocks commits if your active `user.email` doesn't match the expected profile for that folder.
+GitSetu includes a global pre-commit hook that actively monitors your `$PWD` and blocks commits if your active `user.email` doesn't match the expected profile for that folder.
 
 ```bash
 # Install the global identity guard
-gideon guard --install
+gitsetu guard --install
 ```
 
 ```text
 $ git commit -m "fix critical auth bug"
 
-⚠ gideon: Identity mismatch detected!
+⚠ gitsetu: Identity mismatch detected!
   Expected: engineering@company.com (profile: work)
   Actual:   personal@gmail.com
-
-  Run 'gideon status' to investigate.
-  Use --no-verify to skip this check.
 ```
 
 ---
 
-## 🌍 How Gideon Fits into the Ecosystem
+## 06. Ecosystem Comparison
 
-Gideon's architecture was specifically designed to handle the entire bootstrapping pipeline without dependencies. While there are many fantastic tools that help switch identities, Gideon is unique in its ability to provision the entire SSH infrastructure from an empty machine.
-
-| Feature | `gitego` (Go) | `gguser` (Node) | `git-profile` (Rust/JS) | `karn` (Go) | **gideon (Bash)** |
+| Feature | `gitego` (Go) | `gguser` (Node) | `git-profile` (Rust/JS) | `karn` (Go) | **GitSetu (Bash)** |
 |---------|:---:|:---:|:---:|:---:|:---:|
 | **Identity Switching** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Directory-Based Auto Switch** | ✅ | ✅ | ❌ | ✅ | ✅ |
@@ -115,43 +135,16 @@ Gideon's architecture was specifically designed to handle the entire bootstrappi
 | **Absolute Zero Dependencies** | ❌ | ❌ | ❌ | ❌ | ✅ |
 | **Safe Idempotent Execution** | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-- **Absolute Zero Dependencies:** Written in pure Bash 3.2. No Go, Node, Rust, or Homebrew required.
-- **Strictly Idempotent:** Safe to run multiple times. Gideon marks its config sections with managed blocks and surgically edits them using stateful filters. It never corrupts your custom configurations.
-- **Native Security & Convenience:** Automatically provisions Native SSH Commit Signing (`commit.gpgsign=true`) to generate "Verified" badges without GPG, and configures native OS-level `ssh-agent` auto-reloading to eliminate repeated passphrase prompts.
-- **Self-Healing:** Natively detects and fixes VirtualBox/WSL CRLF line-ending bugs, and automatically injects Git `safe.directory` rules to resolve "dubious ownership" errors on shared mounts.
-- **Beautiful UI:** Features a high-fidelity ANSI terminal interface with interactive prompts, dynamic SSH loading spinners, and an ASCII dashboard status command.
-
 ---
 
-## 🛠️ CLI Reference
+## 07. Philosophy
 
-| Command | Description |
-|---------|-------------|
-| `gideon setup` | Interactive setup wizard |
-| `gideon setup --dry-run` | Preview what setup would do (no writes) |
-| `gideon status` | Show current identity dashboard and all profiles |
-| `gideon verify` | Test SSH keys, git config, and connectivity |
-| `gideon run <profile> -- <cmd>` | Execute a single command as a specific identity |
-| `gideon remove <profile>` | Surgically remove a single profile configuration |
-| `gideon teardown` | Remove all gideon configurations safely |
-| `gideon guard --install` | Install pre-commit identity mismatch guard |
-| `gideon guard --uninstall` | Remove the guard hook |
-| `gideon --version` | Display version information |
+In Sanskrit, *Setu (सेतु)* is the bridge that connects two shores without disturbing either. It doesn't change the shore. It doesn't own the water. It simply makes crossing effortless and reliable.
+
+GitSetu is built on the same principle. It does not replace Git, SSH, or your terminal workflow. It bridges the gap between the developer you are in one directory and the developer you are in another — invisibly, correctly, and without asking anything of you after the first setup.
+
+**A tool that demands your attention has failed. GitSetu succeeds when you forget it exists.**
 
 ---
-
-## 📖 Deep Dives
-
-To truly understand the philosophy and engineering behind Gideon, read the manifesto:
-- **[The Gideon Manifesto & Architecture](docs/MANIFESTO.md)**: Why we rejected modern package managers to build an enterprise tool in Bash 3.2.
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Diagnostics for SSH and Git issues.
-
----
-
-## 🤝 Contributing & License
-
-Gideon is comprehensively tested with an automated 81-suite integration test covering edge cases across macOS, Linux, Git Bash, and VirtualBox shared mounts. 
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 [MIT License](LICENSE) — Created by Bhaskar Jha

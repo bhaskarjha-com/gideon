@@ -5,7 +5,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 setup_test_home
 
-source_gideon_libs
+source_gitsetu_libs
 detect_os
 
 # --- Tests ---
@@ -13,10 +13,10 @@ detect_os
 test_ensure_dirs_creates_all() {
     ensure_dirs
 
-    assert_dir_exists "$GIDEON_CONFIG_DIR" "config dir exists" &&
-    assert_dir_exists "$GIDEON_BACKUP_DIR" "backup dir exists" &&
-    assert_dir_exists "$GIDEON_PROFILES_DIR" "profiles dir exists" &&
-    assert_dir_exists "$GIDEON_HOOKS_DIR" "hooks dir exists"
+    assert_dir_exists "$GITSETU_CONFIG_DIR" "config dir exists" &&
+    assert_dir_exists "$GITSETU_BACKUP_DIR" "backup dir exists" &&
+    assert_dir_exists "$GITSETU_PROFILES_DIR" "profiles dir exists" &&
+    assert_dir_exists "$GITSETU_HOOKS_DIR" "hooks dir exists"
 }
 
 test_backup_creates_timestamped_copy() {
@@ -28,13 +28,13 @@ test_backup_creates_timestamped_copy() {
 
     # Should have at least one .bak file
     local count
-    count=$(find "$GIDEON_BACKUP_DIR" -name "test_config.*.bak" | wc -l)
+    count=$(find "$GITSETU_BACKUP_DIR" -name "test_config.*.bak" | wc -l)
 
     if [[ "$count" -ge 1 ]]; then
         return 0
     fi
 
-    printf '    FAIL: No backup file found in %s\n' "$GIDEON_BACKUP_DIR"
+    printf '    FAIL: No backup file found in %s\n' "$GITSETU_BACKUP_DIR"
     return 1
 }
 
@@ -47,7 +47,7 @@ test_backup_preserves_content() {
 
     # Find the backup
     local bak_file
-    bak_file=$(find "$GIDEON_BACKUP_DIR" -name "test_preserve.*.bak" | head -n1)
+    bak_file=$(find "$GITSETU_BACKUP_DIR" -name "test_preserve.*.bak" | head -n1)
 
     assert_file_contains "$bak_file" "important data" "backup has original content"
 }
@@ -78,7 +78,7 @@ test_multiple_backups_dont_overwrite() {
     backup_file "$test_file" 2>/dev/null
 
     local count
-    count=$(find "$GIDEON_BACKUP_DIR" -name "test_multi.*.bak" | wc -l)
+    count=$(find "$GITSETU_BACKUP_DIR" -name "test_multi.*.bak" | wc -l)
 
     if [[ "$count" -ge 2 ]]; then
         return 0

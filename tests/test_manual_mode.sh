@@ -5,7 +5,7 @@ set -euo pipefail
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$TEST_DIR/helpers.sh"
-source_gideon_libs
+source_gitsetu_libs
 detect_os
 
 setup() {

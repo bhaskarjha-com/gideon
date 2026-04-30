@@ -3,17 +3,17 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
-source_gideon_libs
+source_gitsetu_libs
 
 # --- Tests ---
 
 test_detect_os_returns_value() {
     detect_os
     # Must be one of the known values
-    case "$GIDEON_OS" in
+    case "$GITSETU_OS" in
         linux|macos|wsl|gitbash|unknown) return 0 ;;
         *)
-            printf '    Unexpected GIDEON_OS value: %s\n' "$GIDEON_OS"
+            printf '    Unexpected GITSETU_OS value: %s\n' "$GITSETU_OS"
             return 1
             ;;
     esac
