@@ -14,7 +14,7 @@ test_doctor_detects_missing_registry() {
     local output
     output=$(run_doctor 2>&1 || true)
     
-    assert_contains "$output" "ERROR: Registry missing" "detects missing registry"
+    assert_contains "$output" "ERROR: Registry missing" "detects missing registry" || return 1
 }
 
 test_doctor_detects_missing_ssh_agent() {
@@ -25,7 +25,7 @@ test_doctor_detects_missing_ssh_agent() {
     local output
     output=$(run_doctor 2>&1 || true)
     
-    assert_contains "$output" "WARNING: SSH_AUTH_SOCK is not set" "detects missing ssh agent"
+    assert_contains "$output" "WARNING: SSH_AUTH_SOCK is not set" "detects missing ssh agent" || return 1
     
     # Restore
     if [[ -n "$old_sock" ]]; then
@@ -40,8 +40,8 @@ test_doctor_detects_missing_managed_blocks() {
     local output
     output=$(run_doctor 2>&1 || true)
     
-    assert_contains "$output" "~/.gitconfig: " "checks gitconfig"
-    assert_contains "$output" "WARNING (Managed blocks missing)" "detects missing block in gitconfig"
+    assert_contains "$output" "~/.gitconfig: " "checks gitconfig" || return 1
+    assert_contains "$output" "WARNING (Managed blocks missing)" "detects missing block in gitconfig" || return 1
 }
 
 test_doctor_success_state() {
@@ -64,9 +64,9 @@ EOF
     local output
     output=$(run_doctor 2>&1 || true)
     
-    assert_contains "$output" "Registry: OK" "registry ok"
-    assert_contains "$output" "~/.gitconfig: OK" "gitconfig ok"
-    assert_contains "$output" "~/.ssh/config: OK" "ssh config ok"
+    assert_contains "$output" "Registry: OK" "registry ok" || return 1
+    assert_contains "$output" "~/.gitconfig: OK" "gitconfig ok" || return 1
+    assert_contains "$output" "~/.ssh/config: OK" "ssh config ok" || return 1
 }
 
 printf '\n%btest_doctor.sh%b\n' "$T_BOLD" "$T_RESET"

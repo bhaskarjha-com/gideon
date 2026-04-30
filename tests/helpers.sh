@@ -252,4 +252,6 @@ source_gitsetu_libs() {
     source "$script_dir/lib/gitconfig.sh"
     source "$script_dir/lib/guard.sh"
     source "$script_dir/lib/verify.sh"
+    source "$script_dir/lib/discovery.sh"
+    source "$script_dir/lib/doctor.sh"
 }

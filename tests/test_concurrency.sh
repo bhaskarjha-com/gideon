@@ -32,10 +32,10 @@ test_atomic_registry_writes() {
     local line_count
     line_count=$(wc -l < "$GITSETU_PROFILES_CONF")
     # Actually, the file has a 3-line header. 3 header + 2 profiles = 5 lines.
-    assert_equals "5" "$line_count" "profiles.conf has exactly 5 lines (no data dropped or interleaved)"
+    assert_equals "5" "$line_count" "profiles.conf has exactly 5 lines (no data dropped or interleaved)" || return 1
     
-    assert_file_contains "$GITSETU_PROFILES_CONF" "global:global@test.com::github.com:0:$HOME/.ssh/id_ed25519_global" "has global"
-    assert_file_contains "$GITSETU_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro:github.com:0:$HOME/.ssh/id_ed25519_pro" "has pro"
+    assert_file_contains "$GITSETU_PROFILES_CONF" "global:global@test.com::github.com:0:$HOME/.ssh/id_ed25519_global" "has global" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro:github.com:0:$HOME/.ssh/id_ed25519_pro" "has pro" || return 1
 }
 
 printf '\n%btest_concurrency.sh%b\n' "$T_BOLD" "$T_RESET"

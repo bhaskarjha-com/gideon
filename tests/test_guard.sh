@@ -19,10 +19,10 @@ test_install_guard() {
     GITSETU_DRY_RUN=0
     install_guard 2>/dev/null
     
-    assert_file_exists "$GITSETU_HOOKS_DIR/pre-commit" "hook file created"
+    assert_file_exists "$GITSETU_HOOKS_DIR/pre-commit" "hook file created" || return 1
     local hooks_path
     hooks_path=$(git config --global core.hooksPath 2>/dev/null || echo "")
-    assert_equals "$GITSETU_HOOKS_DIR" "$hooks_path" "core.hooksPath set globally"
+    assert_equals "$GITSETU_HOOKS_DIR" "$hooks_path" "core.hooksPath set globally" || return 1
 }
 
 test_guard_blocks_mismatch() {
@@ -43,7 +43,7 @@ test_guard_blocks_mismatch() {
     local output
     output=$(git -C "$HOME/work" commit -m "Test" 2>&1 || echo "FAILED")
     
-    assert_contains "$output" "Identity mismatch detected" "hook blocks mismatch"
+    assert_contains "$output" "Identity mismatch detected" "hook blocks mismatch" || return 1
 }
 
 test_guard_allows_match() {
@@ -64,7 +64,7 @@ test_guard_allows_match() {
     # Git requires author/committer names, provide env to satisfy it since no global config
     output=$(GIT_AUTHOR_NAME="T" GIT_AUTHOR_EMAIL="work@example.com" GIT_COMMITTER_NAME="T" GIT_COMMITTER_EMAIL="work@example.com" git -C "$HOME/work" commit -m "Test" 2>&1 || echo "FAILED")
     
-    assert_not_contains "$output" "Identity mismatch detected" "hook allows match"
+    assert_not_contains "$output" "Identity mismatch detected" "hook allows match" || return 1
 }
 
 test_guard_pass_through() {
@@ -92,7 +92,7 @@ EOF
     local output
     output=$(GIT_AUTHOR_NAME="T" GIT_AUTHOR_EMAIL="work@example.com" GIT_COMMITTER_NAME="T" GIT_COMMITTER_EMAIL="work@example.com" git -C "$HOME/work" commit -m "Test 2" 2>&1 || echo "FAILED")
     
-    assert_contains "$output" "LOCAL HOOK PASSTHROUGH SUCCESS" "local hook ran"
+    assert_contains "$output" "LOCAL HOOK PASSTHROUGH SUCCESS" "local hook ran" || return 1
 }
 
 printf '\n%btest_guard.sh%b\n' "$T_BOLD" "$T_RESET"

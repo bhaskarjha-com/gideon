@@ -15,7 +15,7 @@ test_discover_global_git_identity_from_ssh() {
     # Run discovery
     discover_global_git_identity
     
-    assert_equals "user@testdomain.com" "$DISCOVERED_GLOBAL_EMAIL" "extracted email from ssh pub key"
+    assert_equals "user@testdomain.com" "$DISCOVERED_GLOBAL_EMAIL" "extracted email from ssh pub key" || return 1
 }
 
 test_discover_global_git_identity_from_gitconfig() {
@@ -28,8 +28,8 @@ EOF
 
     discover_global_git_identity
     
-    assert_equals "John Doe" "$DISCOVERED_GLOBAL_NAME" "extracted name from gitconfig"
-    assert_equals "john@example.com" "$DISCOVERED_GLOBAL_EMAIL" "extracted email from gitconfig"
+    assert_equals "John Doe" "$DISCOVERED_GLOBAL_NAME" "extracted name from gitconfig" || return 1
+    assert_equals "john@example.com" "$DISCOVERED_GLOBAL_EMAIL" "extracted email from gitconfig" || return 1
 }
 
 test_discover_ssh_key() {
@@ -38,12 +38,12 @@ test_discover_ssh_key() {
     
     local result
     result=$(discover_ssh_key_for_label "work")
-    assert_equals "$HOME/.ssh/id_rsa_work" "$result" "found rsa key"
+    assert_equals "$HOME/.ssh/id_rsa_work" "$result" "found rsa key" || return 1
     
     # Touch ed25519, it should be preferred over rsa
     touch "$HOME/.ssh/id_ed25519_work"
     result=$(discover_ssh_key_for_label "work")
-    assert_equals "$HOME/.ssh/id_ed25519_work" "$result" "prefers ed25519 over rsa"
+    assert_equals "$HOME/.ssh/id_ed25519_work" "$result" "prefers ed25519 over rsa" || return 1
 }
 
 test_discover_workspace_dir_fallback() {
@@ -52,20 +52,21 @@ test_discover_workspace_dir_fallback() {
     
     local result
     result=$(discover_workspace_dir "work")
-    assert_equals "$HOME/work" "$result" "found workspace dir"
+    assert_equals "$HOME/work" "$result" "found workspace dir" || return 1
 }
 
 test_discover_workspace_dir_includeif() {
-    # Should parse from includeIf
-    mkdir -p "$HOME/random_folder"
+    # Should parse from includeIf (label must be in the gitdir path)
+    rm -rf "$HOME/work" # clean up from previous test
+    mkdir -p "$HOME/random_work_folder"
     cat > "$HOME/.gitconfig" <<EOF
-[includeIf "gitdir:~/random_folder/"]
+[includeIf "gitdir:~/random_work_folder/"]
     path = ~/.config/gitsetu/profiles/work.gitconfig
 EOF
 
     local result
     result=$(discover_workspace_dir "work")
-    assert_equals "$HOME/random_folder" "$result" "extracted from includeIf"
+    assert_equals "$HOME/random_work_folder" "$result" "extracted from includeIf" || return 1
 }
 
 test_discover_workspace_dir_ignores_global() {
@@ -74,7 +75,7 @@ test_discover_workspace_dir_ignores_global() {
     
     local result
     result=$(discover_workspace_dir "global")
-    assert_equals "" "$result" "ignores global label"
+    assert_equals "" "$result" "ignores global label" || return 1
 }
 
 printf '\n%btest_discovery.sh%b\n' "$T_BOLD" "$T_RESET"

@@ -12,42 +12,42 @@ GITSETU_EXE="${GITSETU_EXE%$'\r'}"
 test_cli_no_args_shows_help() {
     local output
     output=$("$GITSETU_EXE" 2>&1 || true)
-    assert_contains "$output" "Usage:" "no args prints usage"
+    assert_contains "$output" "Usage:" "no args prints usage" || return 1
 }
 
 test_cli_invalid_command() {
     local output
     output=$("$GITSETU_EXE" fakecmd 2>&1 || true)
-    assert_contains "$output" "Unknown command" "catches invalid command"
-    assert_exit_code 1 "$GITSETU_EXE" fakecmd
+    assert_contains "$output" "Unknown command" "catches invalid command" || return 1
+    assert_exit_code 1 "$GITSETU_EXE" fakecmd || return 1
 }
 
 test_cli_add_missing_args() {
     local output
     output=$("$GITSETU_EXE" add 2>&1 || true)
-    assert_contains "$output" "Missing arguments for add" "catches missing args"
-    assert_exit_code 1 "$GITSETU_EXE" add
+    assert_contains "$output" "Usage: gitsetu add" "catches missing args" || return 1
+    assert_exit_code 1 "$GITSETU_EXE" add || return 1
 }
 
 test_cli_add_invalid_label() {
     local output
     output=$("$GITSETU_EXE" add "bad label" "Name" "email@test.com" "$HOME/dir" 2>&1 || true)
-    assert_contains "$output" "Invalid label" "catches invalid label format"
-    assert_exit_code 1 "$GITSETU_EXE" add "bad label" "Name" "email@test.com" "$HOME/dir"
+    assert_contains "$output" "Invalid profile label" "catches invalid label format" || return 1
+    assert_exit_code 1 "$GITSETU_EXE" add "bad label" "Name" "email@test.com" "$HOME/dir" || return 1
 }
 
 test_cli_remove_invalid_arg() {
     local output
     output=$("$GITSETU_EXE" remove 2>&1 || true)
-    assert_contains "$output" "Usage: gitsetu remove" "catches missing arg for remove"
-    assert_exit_code 1 "$GITSETU_EXE" remove
+    assert_contains "$output" "Usage: gitsetu remove" "catches missing arg for remove" || return 1
+    assert_exit_code 1 "$GITSETU_EXE" remove || return 1
 }
 
 test_cli_help_flag() {
     local output
     output=$("$GITSETU_EXE" --help 2>&1 || true)
-    assert_contains "$output" "USAGE" "prints help"
-    assert_exit_code 0 "$GITSETU_EXE" --help
+    assert_contains "$output" "USAGE" "prints help" || return 1
+    assert_exit_code 0 "$GITSETU_EXE" --help || return 1
 }
 
 printf '\n%btest_cli.sh%b\n' "$T_BOLD" "$T_RESET"

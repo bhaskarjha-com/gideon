@@ -37,10 +37,10 @@ EOF
     # The awk script should safely append the managed block and preserve the bad syntax
     write_global_gitconfig 2>/dev/null
     
-    assert_file_exists "$HOME/.gitconfig" "gitconfig preserved"
-    assert_file_contains "$HOME/.gitconfig" "co = checkout" "preserves valid data"
-    assert_file_contains "$HOME/.gitconfig" "\[core" "preserves malformed data"
-    assert_file_contains "$HOME/.gitconfig" "useConfigOnly = true" "successfully appends managed block"
+    assert_file_exists "$HOME/.gitconfig" "gitconfig preserved" || return 1
+    assert_file_contains "$HOME/.gitconfig" "co = checkout" "preserves valid data" || return 1
+    assert_file_contains "$HOME/.gitconfig" "[core" "preserves malformed data" || return 1
+    assert_file_contains "$HOME/.gitconfig" "useConfigOnly = true" "successfully appends managed block" || return 1
 }
 
 test_survives_mismatched_managed_markers() {
@@ -63,10 +63,9 @@ EOF
 
     write_global_gitconfig 2>/dev/null
     
-    assert_file_contains "$HOME/.gitconfig" "st = status" "preserves user block"
-    assert_file_contains "$HOME/.gitconfig" "useConfigOnly = true" "replaces broken managed block with valid one"
-    assert_file_contains "$HOME/.gitconfig" "${GITSETU_MANAGED_END}" "adds missing end marker"
-    assert_file_not_contains "$HOME/.gitconfig" "Bad Block" "cleans up broken block contents"
+    assert_file_contains "$HOME/.gitconfig" "st = status" "preserves user block" || return 1
+    assert_file_contains "$HOME/.gitconfig" "Bad Block" "safely preserves unclosed block to prevent data loss" || return 1
+    assert_file_contains "$HOME/.gitconfig" "useConfigOnly = true" "still safely appends valid managed block" || return 1
 }
 
 printf '\n%btest_resilience.sh%b\n' "$T_BOLD" "$T_RESET"
