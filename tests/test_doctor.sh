@@ -40,6 +40,7 @@ test_doctor_detects_missing_managed_blocks() {
     local output
     output=$(run_doctor 2>&1 || true)
     
+    # shellcheck disable=SC2088
     assert_contains "$output" "~/.gitconfig: " "checks gitconfig" || return 1
     assert_contains "$output" "WARNING (Managed blocks missing)" "detects missing block in gitconfig" || return 1
 }
@@ -65,7 +66,9 @@ EOF
     output=$(run_doctor 2>&1 || true)
     
     assert_contains "$output" "Registry: OK" "registry ok" || return 1
+    # shellcheck disable=SC2088
     assert_contains "$output" "~/.gitconfig: OK" "gitconfig ok" || return 1
+    # shellcheck disable=SC2088
     assert_contains "$output" "~/.ssh/config: OK" "ssh config ok" || return 1
 }
 

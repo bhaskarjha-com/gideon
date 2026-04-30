@@ -16,7 +16,6 @@ setup() {
     PROFILE_EMAILS=("global@example.com" "manual@example.com")
     PROFILE_DIRS=("" "")  # Both empty!
     PROFILE_COUNT=2
-    DEFAULT_PROFILE_INDEX=0
 
     ensure_dirs
     write_global_gitconfig >/dev/null 2>&1
