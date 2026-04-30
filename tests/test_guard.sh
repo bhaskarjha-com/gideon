@@ -22,6 +22,12 @@ test_install_guard() {
     assert_file_exists "$GITSETU_HOOKS_DIR/pre-commit" "hook file created" || return 1
     local hooks_path
     hooks_path=$(git config --global core.hooksPath 2>/dev/null || echo "")
+    
+    # Normalize path on Windows (C:/ -> /c/) so it matches gitbash POSIX path
+    if [[ "$GITSETU_OS" == "gitbash" ]]; then
+        hooks_path=$(printf '%s' "$hooks_path" | sed -E 's|^([a-zA-Z]):/|/\L\1/|')
+    fi
+    
     assert_equals "$GITSETU_HOOKS_DIR" "$hooks_path" "core.hooksPath set globally" || return 1
 }
 
