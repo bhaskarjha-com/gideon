@@ -89,6 +89,10 @@ $ cd ~/work/my-api && git commit -m "fix: auth bug"
 Author: Aditya Kumar <aditya@company.com> ← correct, automatically
 ```
 
+> **Pro Tip: Setting a Global Fallback**  
+> By default, GitSetu enforces maximum security. If you commit outside a mapped directory, Git will intentionally block you to prevent identity leakage (`useConfigOnly = true`). 
+> If you *want* a global fallback (e.g., use your personal email everywhere by default), simply edit that profile and set its directory to your home folder (`~/`). Git's path-matching will treat it as a catch-all fallback, while more specific directories (like `~/work`) will safely override it!
+
 ---
 
 ## 04. What You Get
