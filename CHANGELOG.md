@@ -14,10 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global `~/.gitconfig` with `includeIf` conditional includes for directory-based identity switching
 - Per-profile gitconfig files with `core.sshCommand` for automatic SSH key selection
 - `~/.ssh/config` host alias generation for the clone workflow
-- Pre-commit identity guard hook (`gideon guard --install`) to prevent wrong-identity commits
-- `gideon status` command showing current identity and all configured profiles
-- `gideon verify` command testing SSH keys, permissions, git config, and connectivity
-- Dry-run mode (`gideon setup --dry-run`) to preview changes without writing
+- Pre-commit identity guard hook (`gitsetu guard --install`) to prevent wrong-identity commits
+- `gitsetu status` command showing current identity and all configured profiles
+- `gitsetu verify` command testing SSH keys, permissions, git config, and connectivity
+- Dry-run mode (`gitsetu setup --dry-run`) to preview changes without writing
 - Timestamped backups of all modified configuration files
 - Managed block markers for idempotent re-runs (safe to run multiple times)
 - Cross-platform support: Linux, macOS (bash 3.2), Windows (Git Bash), WSL
