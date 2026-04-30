@@ -58,6 +58,13 @@ fi
 # Get the current git directory (absolute path)
 current_dir=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
+# Normalize Windows paths (C:/ -> /c/) to match gitsetu registry format
+if [[ "$current_dir" =~ ^([a-zA-Z]):/(.*) ]]; then
+    drive="${BASH_REMATCH[1]}"
+    rest="${BASH_REMATCH[2]}"
+    drive=$(printf "%s" "$drive" | tr "[:upper:]" "[:lower:]")
+    current_dir="/${drive}/${rest}"
+fi
 # Get the configured email for this repo
 actual_email=$(git config user.email 2>/dev/null || true)
 
