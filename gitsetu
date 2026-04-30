@@ -644,7 +644,7 @@ main() {
             cmd_run "$@"
             ;;
         remove)
-            cmd_profile remove "$1"
+            cmd_remove "${1:-}"
             ;;
         profile)
             cmd_profile "$@"

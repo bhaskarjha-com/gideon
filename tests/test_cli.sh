@@ -46,7 +46,7 @@ test_cli_remove_invalid_arg() {
 test_cli_help_flag() {
     local output
     output=$("$GITSETU_EXE" --help 2>&1 || true)
-    assert_contains "$output" "COMMANDS:" "prints help"
+    assert_contains "$output" "USAGE" "prints help"
     assert_exit_code 0 "$GITSETU_EXE" --help
 }
 
