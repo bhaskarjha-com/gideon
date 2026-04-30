@@ -350,7 +350,8 @@ cmd_profile() {
             fi
 
             if [[ "$idx" -eq -1 ]]; then
-                if ! validate_label "$label" >&2; then
+                if ! validate_label "$label"; then
+                    print_error "Invalid profile label: '$label'."
                     exit 1
                 fi
                 idx=$PROFILE_COUNT
