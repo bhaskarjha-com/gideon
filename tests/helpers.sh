@@ -255,4 +255,6 @@ source_gitsetu_libs() {
     source "$script_dir/lib/verify.sh"
     source "$script_dir/lib/discovery.sh"
     source "$script_dir/lib/doctor.sh"
+    
+    detect_os
 }
