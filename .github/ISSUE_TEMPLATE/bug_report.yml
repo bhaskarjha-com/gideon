@@ -1,0 +1,53 @@
+name: Bug Report
+description: Create a report to help us improve
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: bash-version
+    attributes:
+      label: Bash Version
+      description: Please provide your Bash version (`bash --version`). Gideon requires Bash 3.2+.
+      placeholder: "e.g., GNU bash, version 5.1.16(1)-release"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system and version are you using? (e.g., macOS 14.2, Ubuntu 22.04, Windows WSL2)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      value: |
+        1. Run command '...'
+        2. Set up environment '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Error Output
+      description: Please paste any relevant shell output.
+      render: shell
