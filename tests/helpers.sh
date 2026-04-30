@@ -216,6 +216,7 @@ TEST_HOME=""
 setup_test_home() {
     ORIGINAL_HOME="$HOME"
     TEST_HOME=$(mktemp -d "${TMPDIR:-/tmp}/gitsetu-test.XXXXXX")
+    TEST_HOME=$(cd "$TEST_HOME" && pwd -P)
     export HOME="$TEST_HOME"
     unset XDG_CONFIG_HOME
     mkdir -p "$HOME/.ssh"

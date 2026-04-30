@@ -30,7 +30,7 @@ test_atomic_registry_writes() {
     
     # Verify the file is not corrupted (should have exactly 2 lines)
     local line_count
-    line_count=$(wc -l < "$GITSETU_PROFILES_CONF")
+    line_count=$(wc -l < "$GITSETU_PROFILES_CONF" | tr -d ' ')
     # Actually, the file has a 3-line header. 3 header + 2 profiles = 5 lines.
     assert_equals "5" "$line_count" "profiles.conf has exactly 5 lines (no data dropped or interleaved)" || return 1
     
