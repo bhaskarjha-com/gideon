@@ -176,12 +176,10 @@ execute_blueprint() {
         fi
     done
 
-    # 2. Write profile gitconfigs (for non-default profiles)
+    # 2. Write profile gitconfigs
     print_section "Writing Git Configuration"
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        if [[ "$i" -ne "$DEFAULT_PROFILE_INDEX" ]]; then
-            write_profile_gitconfig "${PROFILE_LABELS[i]}" "${PROFILE_NAMES[i]}" "${PROFILE_EMAILS[i]}" "${PROFILE_SIGNS[i]}" "${PROFILE_KEYS[i]}"
-        fi
+        write_profile_gitconfig "${PROFILE_LABELS[i]}" "${PROFILE_NAMES[i]}" "${PROFILE_EMAILS[i]}" "${PROFILE_SIGNS[i]}" "${PROFILE_KEYS[i]}"
     done
 
     # 3. Write global gitconfig

@@ -64,9 +64,6 @@ verify_git_config() {
 
     # Check profile configs exist
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
-            continue  # Default profile is in global config, not a separate file
-        fi
 
         local label="${PROFILE_LABELS[$i]}"
         local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
@@ -79,9 +76,6 @@ verify_git_config() {
 
     # Verify includeIf works in actual git repos (if any exist)
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
-            continue
-        fi
 
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
@@ -225,18 +219,10 @@ verify_all() {
 
         # Config status
         local config_status="${GREEN}${SYM_CHECK}${RESET}"
-        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
-            # Default is in global config
-            if [[ ! -f "$HOME/.gitconfig" ]]; then
-                config_status="${RED}${SYM_CROSS}${RESET}"
-                total_issues=$((total_issues + 1))
-            fi
-        else
-            local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
-            if [[ ! -f "$profile_path" ]]; then
-                config_status="${RED}${SYM_CROSS}${RESET}"
-                total_issues=$((total_issues + 1))
-            fi
+        local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
+        if [[ ! -f "$profile_path" ]]; then
+            config_status="${RED}${SYM_CROSS}${RESET}"
+            total_issues=$((total_issues + 1))
         fi
 
         printf >&2 "  %-12s %-30s %b     %b     %b\n" \

@@ -20,8 +20,6 @@ build_global_gitconfig_block() {
     local gitdir_kw
     gitdir_kw=$(get_gitdir_keyword)
 
-    local default_label="${PROFILE_LABELS[$DEFAULT_PROFILE_INDEX]}"
-
     # Start with header and default user
     cat <<EOF
 ${GITSETU_MANAGED_START}
@@ -29,8 +27,8 @@ ${GITSETU_MANAGED_START}
 # Do not edit between managed markers — gitsetu will overwrite on re-run.
 # Everything outside these markers is preserved.
 
-[include]
-    path = ${GITSETU_PROFILES_DIR}/${default_label}.gitconfig
+[user]
+    useConfigOnly = true
 
 [init]
     defaultBranch = main
@@ -58,10 +56,6 @@ EOF
     local has_safe=0
     local i
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
-            continue
-        fi
-
         local dir="${PROFILE_DIRS[$i]}"
         if [[ -n "$dir" ]]; then
             if [[ "$dir" != */ ]]; then
@@ -79,10 +73,6 @@ EOF
     # Add includeIf for each non-default profile
     local i
     for i in $(seq 0 $((PROFILE_COUNT - 1))); do
-        if [[ "$i" -eq "$DEFAULT_PROFILE_INDEX" ]]; then
-            continue
-        fi
-
         local label="${PROFILE_LABELS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
 
@@ -275,8 +265,11 @@ write_profiles_conf() {
 
     ensure_dirs
 
+    local tmp_file
+    tmp_file=$(mktemp "${GITSETU_PROFILES_CONF}.tmp.XXXXXX")
+
     # Write header
-    cat > "$GITSETU_PROFILES_CONF" <<EOF
+    cat > "$tmp_file" <<EOF
 # gitsetu profile registry — generated on $(date +%Y-%m-%d)
 # Format: label:email:directory:provider:sign_commits:key_path
 # Used by the pre-commit guard hook
@@ -291,8 +284,9 @@ EOF
         local sign_commits="${PROFILE_SIGNS[$i]:-0}"
         local key_path="${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}"
         
-        printf '%s:%s:%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" "$sign_commits" "$key_path" >> "$GITSETU_PROFILES_CONF"
+        printf '%s:%s:%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" "$sign_commits" "$key_path" >> "$tmp_file"
     done
 
+    mv "$tmp_file" "$GITSETU_PROFILES_CONF"
     print_success "Created profile registry: $GITSETU_PROFILES_CONF"
 }

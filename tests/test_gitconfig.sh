@@ -11,7 +11,7 @@ detect_os
 
 # --- Tests ---
 
-test_global_block_has_user() {
+test_global_block_has_useconfigonly() {
     PROFILE_LABELS=("global" "pro")
     PROFILE_NAMES=("Test User" "Pro User")
     PROFILE_EMAILS=("global@test.com" "pro@test.com")
@@ -22,8 +22,7 @@ test_global_block_has_user() {
     local block
     block=$(build_global_gitconfig_block)
 
-    assert_contains "$block" "[include]" "has include block"
-    assert_contains "$block" "path = ${GITSETU_PROFILES_DIR}/global.gitconfig" "has global include path"
+    assert_contains "$block" "useConfigOnly = true" "has useConfigOnly"
 }
 
 test_global_block_has_includeif() {
@@ -181,7 +180,7 @@ test_write_profiles_conf() {
 # --- Run ---
 
 printf '\n%btest_gitconfig.sh%b\n' "$T_BOLD" "$T_RESET"
-run_test "global block contains default user" test_global_block_has_user
+run_test "global block contains useConfigOnly" test_global_block_has_useconfigonly
 run_test "global block has includeIf for profiles" test_global_block_has_includeif
 run_test "global block has safe directories" test_global_block_has_safe_directories
 run_test "includeIf paths have trailing slash" test_global_block_has_trailing_slash
