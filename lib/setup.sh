@@ -327,6 +327,26 @@ cmd_profile() {
         exit 1
     fi
 
+    # Acquire POSIX directory lock for headless read-modify-write safety
+    local lock_dir="${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu/profiles.lock"
+    local max_retries=300
+    local retry=0
+    
+    # Ensure config directory exists before locking
+    mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu"
+    
+    while ! mkdir "$lock_dir" 2>/dev/null; do
+        retry=$((retry+1))
+        if [[ "$retry" -ge "$max_retries" ]]; then
+            print_error "Failed to acquire lock for profiles.conf. Is another gitsetu process running?"
+            exit 1
+        fi
+        sleep 0.1
+    done
+
+    # Ensure lock is removed on exit
+    trap "rmdir \"$lock_dir\" 2>/dev/null || true" EXIT
+
     load_profiles
     if [[ "$PROFILE_COUNT" -eq 0 ]]; then
         generate_initial_blueprint

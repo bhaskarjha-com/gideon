@@ -151,11 +151,70 @@ list_orphaned_keys() {
 }
 
 # ------------------------------------------------------------------------------
+# teardown_deep — Remove local overrides from repositories
+#
+# Usage: teardown_deep
+# ------------------------------------------------------------------------------
+teardown_deep() {
+    print_section "Deep Cleanup: Repository Overrides"
+    
+    # We must load profiles to know what directories to scan and what to unset
+    load_profiles 2>/dev/null || return 0
+    
+    if [[ "$PROFILE_COUNT" -eq 0 ]]; then
+        print_info "No profiles found. Skipping deep cleanup."
+        return 0
+    fi
+    
+    local i
+    local found_any=0
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        local dir="${PROFILE_DIRS[$i]}"
+        local p_email="${PROFILE_EMAILS[$i]}"
+        local p_key="${PROFILE_KEYS[$i]}"
+        
+        if [[ -n "$dir" ]] && [[ -d "$dir" ]]; then
+            # Find all .git/config in the directory tree
+            local repo_conf
+            while IFS= read -r repo_conf; do
+                [[ -z "$repo_conf" ]] && continue
+                
+                # Check if this repo config has our identity
+                local repo_email repo_key
+                repo_email=$(git config -f "$repo_conf" user.email 2>/dev/null || true)
+                
+                if [[ "$repo_email" == "$p_email" ]]; then
+                    if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
+                        print_info "[DRY RUN] Would strip local GitSetu identity from: $repo_conf"
+                    else
+                        git config -f "$repo_conf" --unset user.email 2>/dev/null || true
+                        git config -f "$repo_conf" --unset user.name 2>/dev/null || true
+                        
+                        repo_key=$(git config -f "$repo_conf" core.sshCommand 2>/dev/null || true)
+                        if [[ "$repo_key" == *"ssh -i $p_key"* ]]; then
+                            git config -f "$repo_conf" --unset core.sshCommand 2>/dev/null || true
+                        fi
+                        print_success "Removed local overrides from: $repo_conf"
+                    fi
+                    found_any=1
+                fi
+            done < <(find "$dir" -type f -name config -path "*/.git/config" 2>/dev/null || true)
+        fi
+    done
+    
+    if [[ "$found_any" -eq 0 ]]; then
+        print_info "No local repository overrides found."
+    fi
+}
+
+# ------------------------------------------------------------------------------
 # teardown_all — Main coordinator for teardown
 #
-# Usage: teardown_all
+# Usage: teardown_all [deep]
 # ------------------------------------------------------------------------------
 teardown_all() {
+    local deep="${1:-0}"
+    
     print_section "Teardown Process"
     
     # 1. Uninstall guard hook (relies on config dir existing)
@@ -166,6 +225,11 @@ teardown_all() {
     
     # 3. Clean ssh config
     teardown_sshconfig
+    
+    # 3.5 Deep cleanup (if requested)
+    if [[ "$deep" -eq 1 ]]; then
+        teardown_deep
+    fi
     
     # 4. Remove config directory (must be last state modifier)
     teardown_config_dir

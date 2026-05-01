@@ -38,6 +38,34 @@ test_atomic_registry_writes() {
     assert_file_contains "$GITSETU_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro:github.com:0:$HOME/.ssh/id_ed25519_pro" "has pro" || return 1
 }
 
+test_atomic_headless_add() {
+    GITSETU_DRY_RUN=0
+    
+    # Empty out existing registry if any
+    rm -f "$GITSETU_PROFILES_CONF"
+    
+    # We will invoke the main CLI headless add in parallel 5 times
+    local gitsetu_bin="$(dirname "${BASH_SOURCE[0]}")/../gitsetu"
+    local i
+    for i in {1..5}; do
+        "$gitsetu_bin" profile add "user${i}" --name="User ${i}" --email="user${i}@test.com" --dir="$HOME/user${i}" >/dev/null 2>&1 &
+    done
+    
+    wait
+    
+    # Verify the registry contains exactly 6 profile entries (plus 3 header lines = 9 lines)
+    local line_count
+    line_count=$(wc -l < "$GITSETU_PROFILES_CONF" | tr -d ' ')
+    assert_equals "9" "$line_count" "profiles.conf has exactly 9 lines (global + 5 parallel profiles)" || return 1
+    
+    assert_file_contains "$GITSETU_PROFILES_CONF" "global:" "contains global profile" || return 1
+    
+    for i in {1..5}; do
+        assert_file_contains "$GITSETU_PROFILES_CONF" "user${i}:user${i}@test.com:" "contains user${i} profile" || return 1
+    done
+}
+
 printf '\n%btest_concurrency.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "atomic writes survive parallel execution" test_atomic_registry_writes
+run_test "POSIX lock survives parallel headless profile additions" test_atomic_headless_add
 print_results "Concurrency tests"

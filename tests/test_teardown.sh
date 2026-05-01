@@ -130,6 +130,37 @@ test_teardown_keeps_ssh_keys() {
     assert_file_exists "$HOME/.ssh/id_ed25519_pro"
 }
 
+test_teardown_deep_strips_local_configs() {
+    setup
+    
+    # 1. Create a mapped dummy repo (should be stripped)
+    local mapped_repo="$HOME/pro/mapped-repo"
+    mkdir -p "$mapped_repo"
+    git init "$mapped_repo" >/dev/null 2>&1
+    git config -f "$mapped_repo/.git/config" user.name "Pro Name"
+    git config -f "$mapped_repo/.git/config" user.email "pro@example.com"
+    
+    # 2. Create another repo in the mapped dir, but with CUSTOM identity (should NOT be stripped)
+    local unmapped_repo="$HOME/pro/custom-repo"
+    mkdir -p "$unmapped_repo"
+    git init "$unmapped_repo" >/dev/null 2>&1
+    git config -f "$unmapped_repo/.git/config" user.name "Custom Name"
+    git config -f "$unmapped_repo/.git/config" user.email "custom@example.com"
+    
+    # Run deep teardown
+    teardown_all "1" >/dev/null 2>&1
+    
+    # Assert mapped repo was stripped
+    local mapped_email
+    mapped_email=$(git config -f "$mapped_repo/.git/config" user.email 2>/dev/null || echo "")
+    assert_equals "" "$mapped_email" "Mapped repo should have email stripped"
+    
+    # Assert unmapped repo is untouched
+    local unmapped_email
+    unmapped_email=$(git config -f "$unmapped_repo/.git/config" user.email 2>/dev/null || echo "")
+    assert_equals "custom@example.com" "$unmapped_email" "Custom repo identity should remain untouched"
+}
+
 # ------------------------------------------------------------------------------
 # Test Runner
 # ------------------------------------------------------------------------------
@@ -139,5 +170,6 @@ run_test "teardown_sshconfig removes managed blocks but keeps user content" test
 run_test "teardown_config_dir completely removes ~/.config/gitsetu" test_teardown_removes_config_dir
 run_test "uninstall_guard removes hook and unsets core.hooksPath" test_teardown_uninstalls_guard
 run_test "teardown_all leaves generated SSH keys intact for safety" test_teardown_keeps_ssh_keys
+run_test "teardown_deep selectively strips matched local repo identities" test_teardown_deep_strips_local_configs
 
 print_results "Teardown tests"

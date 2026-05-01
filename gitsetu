@@ -103,7 +103,9 @@ ${BOLD}USAGE${RESET}
     gitsetu status                   Show current identity configuration
     gitsetu verify                   Test SSH keys and git config
     gitsetu run <profile> -- <cmd>   Run command as specific identity
-    gitsetu teardown [--force]       Remove all gitsetu configurations
+    gitsetu teardown [--force] [--deep]  Remove all configurations
+                                     --deep: Recursively strip local repository overrides
+                                     --force: Bypass confirmation prompt
     gitsetu guard --install          Install pre-commit identity guard hook
     gitsetu guard --uninstall        Remove the guard hook
     gitsetu --help, -h               Show this help
@@ -245,20 +247,25 @@ cmd_teardown() {
     fi
 
     local force="${1:-0}"
+    local deep="${2:-0}"
 
     if [[ "$force" -eq 0 ]] && [[ "$GITSETU_DRY_RUN" -eq 0 ]]; then
         print_warning "This will remove all GitSetu configurations:"
         printf >&2 "  - Remove managed blocks from ~/.gitconfig\n"
         printf >&2 "  - Remove managed blocks from ~/.ssh/config\n"
         printf >&2 "  - Uninstall the commit guard hook\n"
-        printf >&2 "  - Delete the ~/.config/gitsetu directory\n\n"
+        printf >&2 "  - Delete the ~/.config/gitsetu directory\n"
+        if [[ "$deep" -eq 1 ]]; then
+            printf >&2 "  - STRIP local identity overrides from all mapped repositories\n"
+        fi
+        printf >&2 "\n"
         if ! confirm "Are you sure you want to proceed?" "n"; then
             print_info "Teardown cancelled."
             return 0
         fi
     fi
 
-    teardown_all
+    teardown_all "$deep"
 }
 
 # ------------------------------------------------------------------------------
@@ -657,19 +664,21 @@ main() {
             ;;
         teardown)
             local force=0
+            local deep=0
             while [[ $# -gt 0 ]]; do
                 case "$1" in
                     --dry-run) GITSETU_DRY_RUN=1 ;;
                     --force|-f) force=1 ;;
+                    --deep) deep=1 ;;
                     *)
                         print_error "Unknown flag: $1"
-                        printf >&2 'Usage: gitsetu teardown [--dry-run] [--force]\n'
+                        printf >&2 'Usage: gitsetu teardown [--dry-run] [--force] [--deep]\n'
                         return 1
                         ;;
                 esac
                 shift
             done
-            cmd_teardown "$force"
+            cmd_teardown "$force" "$deep"
             ;;
         guard)
             if [[ $# -eq 0 ]]; then
