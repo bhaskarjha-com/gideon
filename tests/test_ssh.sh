@@ -114,6 +114,21 @@ test_write_ssh_config_preserves_user_content() {
     assert_file_contains "$HOME/.ssh/config" "Host github-global" "managed block added"
 }
 
+test_generate_key_fido2_fallback() {
+    GITSETU_DRY_RUN=0
+    local key_path="$HOME/.ssh/id_ed25519_sk_fidotest"
+    
+    # We pass the _sk_ path, but since we are running headless without a hardware key,
+    # the FIDO2 generation will fail ("device not found"), which should trigger our fallback
+    # to generate a standard software key instead.
+    
+    local output
+    output=$(generate_ssh_key "fidotest" "fido@example.com" "$key_path" 2>&1 || true)
+    
+    assert_contains "$output" "Falling back to standard ed25519" "triggers fallback gracefully" || return 1
+    assert_file_exists "$key_path" "fallback key was generated at requested path" || return 1
+}
+
 # --- Run ---
 
 printf '\n%btest_ssh.sh%b\n' "$T_BOLD" "$T_RESET"
@@ -125,4 +140,5 @@ run_test "dry run does not create keys" test_generate_key_dry_run
 run_test "write_ssh_config creates config file" test_write_ssh_config_creates_file
 run_test "write_ssh_config is idempotent" test_write_ssh_config_idempotent
 run_test "write_ssh_config preserves user content" test_write_ssh_config_preserves_user_content
+run_test "FIDO2 generates fallback software key" test_generate_key_fido2_fallback
 print_results "SSH tests"

@@ -490,81 +490,6 @@ cmd_remove() {
     fi
 }
 
-# ------------------------------------------------------------------------------
-# cmd_init — Profile-Aware Scaffolder & Retrofitter
-# ------------------------------------------------------------------------------
-cmd_init() {
-    local target_profile=""
-    if [[ "$1" == "--profile" ]]; then
-        target_profile="$2"
-        shift 2
-    fi
-
-    # 1. Detect profile
-    local active_profile=""
-    if [[ -n "$target_profile" ]]; then
-        active_profile="$target_profile"
-        # Verify it exists
-        local found=0
-        while IFS=: read -r label email dir provider sign_commits key_path || [[ -n "$label" ]]; do
-            if [[ "$label" == "$active_profile" ]]; then found=1; break; fi
-        done < "$GITSETU_PROFILES_CONF"
-        if [[ "$found" -eq 0 ]]; then
-            print_error "Profile '$active_profile' not found."
-            return 1
-        fi
-    else
-        # Detect from PWD
-        active_profile=$(cmd_prompt)
-        if [[ -z "$active_profile" ]]; then
-            print_error "Current directory does not match any GitSetu profile path."
-            print_info "Provide a profile explicitly: gitsetu init --profile <name>"
-            return 1
-        fi
-    fi
-
-    # 2. Run git init
-    if [[ ! -d ".git" ]]; then
-        print_step "Initializing git repository..."
-        git init -q
-    else
-        print_step "Repository already initialized."
-    fi
-
-    # 3. Scaffold Templates (if empty)
-    # Only copy templates if the repo is empty (no commits yet) to avoid overwriting existing files
-    if ! git rev-parse HEAD >/dev/null 2>&1; then
-        local template_dir="$HOME/.config/gitsetu/templates/$active_profile"
-        if [[ -d "$template_dir" ]]; then
-            print_step "Applying templates for profile '$active_profile'..."
-            cp -n "$template_dir"/* . 2>/dev/null || true
-            cp -n "$template_dir"/.* . 2>/dev/null || true
-        fi
-    fi
-
-    # 4. Retrofit (If explicitly requested via --profile, we inject local configs to bypass includeIf)
-    if [[ -n "$target_profile" ]]; then
-        print_step "Retrofitting repository to enforce profile '$active_profile'..."
-        # Get profile details
-        local p_name p_email p_key
-        local config_file="$GITSETU_PROFILES_DIR/${active_profile}.gitconfig"
-        if [[ -f "$config_file" ]]; then
-            p_name=$(git config -f "$config_file" user.name)
-            p_email=$(git config -f "$config_file" user.email)
-            p_key=$(git config -f "$config_file" core.sshCommand)
-            
-            git config --local user.name "$p_name"
-            git config --local user.email "$p_email"
-            git config --local core.sshCommand "$p_key"
-            print_success "Local overrides injected into .git/config"
-        else
-            print_error "Could not find gitconfig for profile '$active_profile'."
-            return 1
-        fi
-    fi
-
-    print_success "Repository initialized for identity '$active_profile'."
-}
 
 # ------------------------------------------------------------------------------
 # cmd_prompt — Zero-latency profile detection for PS1 integration
@@ -619,7 +544,6 @@ main() {
         printf >&2 'Usage: gitsetu setup [--dry-run]    Start the setup wizard\n'
         printf >&2 '       gitsetu status               Show current identity\n'
         printf >&2 '       gitsetu verify               Test SSH and git config\n'
-        printf >&2 '       gitsetu init [--profile <name>] Scaffolds/retrofits a repo\n'
         printf >&2 '       gitsetu prompt               Print active profile (for PS1)\n'
         printf >&2 '       gitsetu run <profile> -- <cmd>  Run as identity\n'
         printf >&2 '       gitsetu remove <profile>     Remove a specific profile\n'
@@ -671,9 +595,6 @@ main() {
             ;;
         profile)
             cmd_profile "$@"
-            ;;
-        init)
-            cmd_init "$@"
             ;;
         prompt)
             cmd_prompt "$@"

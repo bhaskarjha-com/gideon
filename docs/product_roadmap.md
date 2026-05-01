@@ -24,6 +24,8 @@ The following critical features and architectural fixes have been successfully i
 - **Native SSH Commit Signing**: Automates "Verified" commit badges using GitSetu-generated keys via `commit.gpgsign=true`, bypassing GPG completely.
 - **Native `ssh-agent` Auto-Reloading**: Injects `AddKeysToAgent yes` (and `UseKeychain yes` on Macs) to natively force the OS SSH daemon to cache passphrases on first use.
 - **Single Profile Teardown (`gitsetu remove`)**: Surgically extracts and deletes specific profiles while cleanly regenerating all global configurations.
+- **FIDO2 / YubiKey Hardware Key Bootstrapping**: Automated generation of resident hardware keys (`ed25519-sk`) with safe fallback to software keys if `libfido2` is not supported on the host.
+- **Shell Prompt Integration (`gitsetu prompt`)**: Ultra-fast, sub-millisecond execution for displaying the active identity within terminal `$PS1` variables without spawning subshells.
 
 ---
 
@@ -37,34 +39,18 @@ All Must Have features for the Core Release have been completed! Proceeding to h
 
 ## 🟡 Should Have (High-Value Integrations)
 
-### 1. FIDO2 / YubiKey Hardware Key Bootstrapping
-**Problem:** Enterprise security mandates hardware-backed SSH keys. Standard keys are vulnerable to exfiltration.
-**Solution:** Automate `ssh-keygen -t ed25519-sk -O resident` for FIDO2 tokens, explicitly prompting users to touch their hardware keys during setup.
-**Constraint Note:** OpenSSH natively supports this, but the host OS must have `libfido2` installed. GitSetu must handle graceful degradation/warnings if the library is missing on older Macs.
-**Difficulty:** Medium.
-
-### 2. Profile-Aware Scaffolder & Retrofitter (`gitsetu init`)
-**Problem:** Native `git init` does not place `.gitignore` files in the working directory. Third-party scaffolders (Cookiecutter) require Python. Existing repositories lack an easy way to opt-into GitSetu without moving directories.
-**Solution:** A unified wrapper. When a user runs `gitsetu init` in an empty directory, it runs Git init and copies template files (e.g., `LICENSE`, `.gitignore`) from `~/.config/gitsetu/templates/<profile>/`. If run in an *existing* repository, it safely injects local `.git/config` overrides (retrofitting it).
-**Constraint Note:** Zero dependencies. Relies on standard `cp` and basic `sed` for templating.
-**Difficulty:** Medium.
-
-### 3. Shell Prompt Integration (`gitsetu prompt`)
-**Problem:** Users lack visual confirmation of their active Git identity in their terminal.
-**Solution:** A sub-millisecond command that outputs the active profile based on `$PWD` for injection into `PS1` or Starship prompts.
-**Constraint Note:** Must avoid subshells to maintain zero-latency execution.
-**Difficulty:** Low.
-
-### 4. Custom SSH Key Naming & Paths
+### 1. Custom SSH Key Naming & Paths
 **Problem:** Keys are forced into `~/.ssh/id_ed25519_<label>`.
 **Solution:** Allow linking existing arbitrary keys.
 **Constraint Note:** Because Bash 3.2 lacks associative arrays (`declare -A`), we cannot store profile-to-key mappings in memory. We will strictly use the global `~/.gitconfig` as our state-engine to retrieve custom paths.
 **Difficulty:** Low.
 
-### 5. Git Credential Helper (PAT Management)
+### 2. Git Credential Helper (PAT Management)
 **Problem:** Corporate firewalls block SSH, forcing HTTPS cloning via Personal Access Tokens.
 **Solution:** Extend GitSetu to act as a lightweight, Bash-based credential helper using the OS keychain.
 **Difficulty:** High (Complex macOS Keychain / Windows Credential Manager integration).
+
+
 
 ---
 

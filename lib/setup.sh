@@ -70,7 +70,15 @@ prompt_edit_profile() {
     fi
     
     # Key
-    ask "SSH Key Path" "${PROFILE_KEYS[i]}"
+    local def_key="${PROFILE_KEYS[i]}"
+    if confirm "Use a FIDO2 / YubiKey hardware key for this profile?" "n"; then
+        if [[ "$def_key" != *"_sk_"* ]]; then
+            def_key="${def_key/id_ed25519/id_ed25519_sk}"
+        fi
+    else
+        def_key="${def_key/_sk_/}"
+    fi
+    ask "SSH Key Path" "$def_key"
     if [[ -n "$REPLY" ]]; then PROFILE_KEYS[i]=$(normalize_path "$REPLY"); fi
 }
 
@@ -105,6 +113,9 @@ prompt_add_profile() {
     PROFILE_DIRS[PROFILE_COUNT]=$(normalize_path "$REPLY")
     
     local def_key="$HOME/.ssh/id_ed25519_${label}"
+    if confirm "Use a FIDO2 / YubiKey hardware key for this profile?" "n"; then
+        def_key="$HOME/.ssh/id_ed25519_sk_${label}"
+    fi
     ask "SSH Key Path" "$def_key"
     PROFILE_KEYS[PROFILE_COUNT]=$(normalize_path "$REPLY")
     

@@ -87,6 +87,22 @@ generate_ssh_key() {
         # shellcheck disable=SC2086
         ssh-keygen -t "$key_type" $extra_args -C "$email" -f "$key_path"
         local status=$?
+        
+        # FIDO2 Fallback Mechanism
+        if [[ "$status" -ne 0 ]] && [[ "$key_type" == "ed25519-sk" ]]; then
+            print_warning "Hardware Security Key enrollment failed (missing device or libfido2 unsupported)."
+            print_info "Falling back to standard ed25519 software key generation..."
+            
+            key_type="ed25519"
+            extra_args=""
+            if [[ "${GITSETU_USE_PASSPHRASE:-0}" -eq 1 ]]; then
+                ssh-keygen -t "$key_type" -C "$email" -f "$key_path"
+                status=$?
+            else
+                ssh-keygen -t "$key_type" -C "$email" -f "$key_path" -N "" -q
+                status=$?
+            fi
+        fi
     else
         # Password-less key (background with spinner)
         # shellcheck disable=SC2086
