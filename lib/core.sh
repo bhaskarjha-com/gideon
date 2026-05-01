@@ -64,6 +64,14 @@ GITSETU_USE_PASSPHRASE=0 # Set to 1 to prompt for SSH passphrases
 # ------------------------------------------------------------------------------
 load_profiles() {
     PROFILE_COUNT=0
+    PROFILE_LABELS=()
+    PROFILE_NAMES=()
+    PROFILE_EMAILS=()
+    PROFILE_DIRS=()
+    PROFILE_PROVIDERS=()
+    PROFILE_SIGNS=()
+    PROFILE_KEYS=()
+    
     if [[ ! -f "$GITSETU_PROFILES_CONF" ]]; then
         return 0
     fi
@@ -77,12 +85,18 @@ load_profiles() {
         PROFILE_PROVIDERS+=("${provider:-github.com}")
         PROFILE_SIGNS+=("${sign_commits:-0}")
         PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
-        # In this context, name isn't stored in registry. For headless add, we might need a dummy.
-        # But wait, name is currently not in profiles.conf! 
-        # Ah! That's a bug in original implementation: profiles.conf has:
-        # label:email:dir:provider:sign_commits:key_path
-        # Where is name? We never saved it! It's derived from global git config usually?
-        PROFILE_NAMES+=("$(git config --global user.name 2>/dev/null || echo "")")
+        
+        # Load name from profile config, fallback to global
+        local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
+        local loaded_name=""
+        if [[ -f "$profile_path" ]]; then
+            loaded_name=$(git config -f "$profile_path" user.name 2>/dev/null || echo "")
+        fi
+        if [[ -z "$loaded_name" ]]; then
+            loaded_name=$(git config --global user.name 2>/dev/null || echo "")
+        fi
+        PROFILE_NAMES+=("$loaded_name")
+        
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
     done < "$GITSETU_PROFILES_CONF"
 }

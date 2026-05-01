@@ -133,6 +133,7 @@ verify_ssh_connectivity() {
 
         local tmp_out
         tmp_out=$(mktemp)
+        GITSETU_CLEANUP_FILES+=("$tmp_out")
         
         # Hide cursor
         printf '\033[?25l' >&2

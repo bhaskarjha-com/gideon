@@ -154,6 +154,36 @@ test_integration_gitsetu_run() {
 
 }
 
+test_identity_preservation_on_reload() {
+    # Test that loading profiles does not overwrite custom names with global fallback
+    rm -rf "$HOME/.ssh" "$GITSETU_CONFIG_DIR"
+    setup_two_profiles
+
+    # Modify pro.gitconfig to have a distinct custom name
+    git config -f "$GITSETU_PROFILES_DIR/pro.gitconfig" user.name "Custom Pro Name"
+
+    # Call load_profiles (simulating a headless load)
+    load_profiles
+
+    # Check if PROFILE_NAMES populated correctly
+    local i
+    local found_name=""
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        if [[ "${PROFILE_LABELS[$i]}" == "pro" ]]; then
+            found_name="${PROFILE_NAMES[$i]}"
+        fi
+    done
+
+    assert_equals "Custom Pro Name" "$found_name" "custom name is preserved in memory"
+
+    # Simulate execute_blueprint rewriting configs
+    write_profile_gitconfig "pro" "$found_name" "pro@test.com" "0" "$HOME/.ssh/id_ed25519_pro" 2>/dev/null
+    
+    local final_name
+    final_name=$(git config -f "$GITSETU_PROFILES_DIR/pro.gitconfig" user.name)
+    assert_equals "Custom Pro Name" "$final_name" "custom name is preserved on disk after rewrite"
+}
+
 # --- Run ---
 
 printf '\n%btest_integration.sh%b\n' "$T_BOLD" "$T_RESET"
@@ -168,4 +198,5 @@ run_test "profile gitconfig is parseable by git" test_integration_profile_gitcon
 run_test "re-run is idempotent (no duplicates)" test_integration_idempotent_rerun
 run_test "backups are created during re-run" test_integration_backup_created
 run_test "gitsetu run exports correctly" test_integration_gitsetu_run
+run_test "identity preservation on headless reload" test_identity_preservation_on_reload
 print_results "Integration tests"

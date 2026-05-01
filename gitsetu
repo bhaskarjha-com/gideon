@@ -82,13 +82,28 @@ gitsetu_source "$GITSETU_SCRIPT_DIR/lib/discovery.sh"
 gitsetu_source "$GITSETU_SCRIPT_DIR/lib/setup.sh"
 
 # ------------------------------------------------------------------------------
-# Signal trap — clean exit on Ctrl+C
+# Unified Global Cleanup Architecture
 # ------------------------------------------------------------------------------
+GITSETU_CLEANUP_FILES=()
+GITSETU_CLEANUP_DIRS=()
+
+gitsetu_global_cleanup() {
+    local f d
+    for f in "${GITSETU_CLEANUP_FILES[@]}"; do
+        rm -f "$f" 2>/dev/null || true
+    done
+    for d in "${GITSETU_CLEANUP_DIRS[@]}"; do
+        rmdir "$d" 2>/dev/null || true
+    done
+}
+
 cleanup() {
     printf >&2 '\n'
     print_warning "Interrupted. No changes were made (or partial changes were backed up)."
+    gitsetu_global_cleanup
     exit 130
 }
+trap gitsetu_global_cleanup EXIT
 trap cleanup SIGINT SIGTERM
 
 # ------------------------------------------------------------------------------

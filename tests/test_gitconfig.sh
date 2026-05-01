@@ -40,7 +40,7 @@ test_global_block_has_includeif() {
     keyword=$(get_gitdir_keyword)
 
     assert_contains "$block" "[includeIf \"${keyword}/dev/pro/\"]" "has includeIf for pro" &&
-    assert_contains "$block" "path = ${GITSETU_PROFILES_DIR}/pro.gitconfig" "has profile path"
+    assert_contains "$block" "path = \"${GITSETU_PROFILES_DIR}/pro.gitconfig\"" "has profile path"
 }
 
 test_global_block_has_safe_directories() {
@@ -55,8 +55,8 @@ test_global_block_has_safe_directories() {
     block=$(build_global_gitconfig_block)
 
     assert_contains "$block" "[safe]" "has safe block header" &&
-    assert_contains "$block" "directory = /dev/pro/*" "has safe directory for pro" &&
-    assert_contains "$block" "directory = /dev/work/*" "has safe directory for work"
+    assert_contains "$block" "directory = \"/dev/pro/*\"" "has safe directory for pro" &&
+    assert_contains "$block" "directory = \"/dev/work/*\"" "has safe directory for work"
 }
 
 test_global_block_has_trailing_slash() {
@@ -177,6 +177,32 @@ test_write_profiles_conf() {
     assert_file_contains "$GITSETU_PROFILES_CONF" "pro:p@t.com:/dev/pro" "has pro entry"
 }
 
+test_path_escaping() {
+    # Test that GitConfig paths are properly escaped for double quotes and backslashes
+    PROFILE_LABELS=("global" "hacker")
+    PROFILE_NAMES=("Global" "Hacker")
+    PROFILE_EMAILS=("g@t.com" "hacker@test.com")
+    # A path that contains double quotes and backslashes
+    PROFILE_DIRS=("" 'C:\Users\John"Doe\work')
+    PROFILE_COUNT=2
+    DEFAULT_PROFILE_INDEX=0
+
+    local block
+    block=$(build_global_gitconfig_block)
+
+    # The original path is: C:\Users\John"Doe\work/ (with trailing slash added)
+    # The escaped path should be: C:\\Users\\John\"Doe\\work/
+    local expected_escaped_dir='C:\\Users\\John\"Doe\\work/'
+    local keyword
+    keyword=$(get_gitdir_keyword)
+    
+    assert_contains "$block" "[includeIf \"${keyword}${expected_escaped_dir}\"]" "path is properly escaped in includeIf" || return 1
+    
+    # Check that [safe] directory is also escaped
+    local expected_safe_dir='C:\\Users\\John\"Doe\\work/*'
+    assert_contains "$block" "directory = \"${expected_safe_dir}\"" "path is properly escaped in safe directory" || return 1
+}
+
 # --- Run ---
 
 printf '\n%btest_gitconfig.sh%b\n' "$T_BOLD" "$T_RESET"
@@ -184,6 +210,7 @@ run_test "global block contains useConfigOnly" test_global_block_has_useconfigon
 run_test "global block has includeIf for profiles" test_global_block_has_includeif
 run_test "global block has safe directories" test_global_block_has_safe_directories
 run_test "includeIf paths have trailing slash" test_global_block_has_trailing_slash
+run_test "includeIf paths are securely escaped" test_path_escaping
 run_test "global block has managed markers" test_global_block_has_managed_markers
 run_test "profile gitconfig has correct content" test_profile_gitconfig_content
 run_test "write creates ~/.gitconfig" test_write_global_gitconfig_creates_file

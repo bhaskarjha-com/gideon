@@ -135,12 +135,12 @@ $ git commit -m "fix critical auth bug"
 
 ---
 
-## 06. Enterprise Automation & Concurrency
+## 06. Enterprise Automation & Zero-Trust Architecture
 
-GitSetu is designed from the ground up for highly parallel CI/CD environments and zero-touch `ansible` provisioning. 
-It guarantees absolute filesystem integrity through pure Bash 3.2 constraints:
-* **Atomic POSIX Locks:** Headless profile creation (`gitsetu profile add`) utilizes an atomic `mkdir` directory lock (`~/.config/gitsetu/profiles.lock`). This perfectly eliminates read-modify-write lost-update race conditions if 50 headless scripts invoke GitSetu at the exact same millisecond. 
-* **Atomic Filesystem Swaps:** Configuration files are never modified in-place. They are written to a temporary (`mktemp`) file and atomically swapped via `mv`, mathematically preventing interleaved or corrupted text files without relying on external non-standard binaries like `flock`.
+GitSetu is designed from the ground up for highly parallel CI/CD environments and zero-touch `ansible` provisioning, adopting a **strictly secure, Zero-Trust Architecture**:
+* **Zero-Trust Pre-Commit Guard:** The identity guard enforces a "fail-closed" boundary. If the GitSetu configuration is missing, tampered with, or if the environment's `$HOME` is overridden maliciously, the hook will unconditionally block the commit to prevent accidental identity leaks.
+* **Atomic POSIX Locks & Stale Reaping:** Headless profile creation (`gitsetu profile add`) utilizes an atomic `mkdir` directory lock (`~/.config/gitsetu/profiles.lock`). This perfectly eliminates read-modify-write lost-update race conditions if 50 headless scripts invoke GitSetu at the exact same millisecond. If a process crashes (`kill -9`), the lock writes a PID and subsequent processes will automatically reap the stale lock to prevent permanent deadlocks.
+* **Atomic Filesystem Swaps & Unified Cleanup:** Configuration files are never modified in-place. They are written to a temporary (`mktemp`) file and atomically swapped via `mv`. A unified architecture bound to `EXIT/SIGINT/SIGTERM` ensures that no temporary files or orphaned locks ever leak onto the host machine.
 
 ---
 

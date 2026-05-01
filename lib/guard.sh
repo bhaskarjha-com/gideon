@@ -51,8 +51,11 @@ set -euo pipefail
 GITSETU_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu/profiles.conf"
 
 if [[ ! -f "$GITSETU_CONF" ]]; then
-    # No config found — allow commit (gitsetu not fully set up)
-    exit 0
+    # No config found — block commit to ensure zero-trust policy.
+    printf "\033[0;31m[GitSetu Guard] ERROR: Identity configuration not found at %s\033[0m\n" "$GITSETU_CONF" >&2
+    printf "If you uninstalled GitSetu, run: \033[1mgit config --global --unset core.hooksPath\033[0m\n" >&2
+    printf "To bypass this check once, use: \033[1mgit commit --no-verify\033[0m\n" >&2
+    exit 1
 fi
 
 # Get the current git directory (absolute path)

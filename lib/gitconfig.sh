@@ -66,7 +66,9 @@ EOF
                 printf '\n[safe]\n'
                 has_safe=1
             fi
-            printf '    directory = %s*\n' "$dir"
+            local escaped_safe_dir="${dir//\\/\\\\}"
+            escaped_safe_dir="${escaped_safe_dir//\"/\\\"}"
+            printf '    directory = "%s*"\n' "$escaped_safe_dir"
         fi
     done
 
@@ -81,11 +83,18 @@ EOF
             if [[ "$dir" != */ ]]; then
                 dir="${dir}/"
             fi
+            
+            local escaped_dir="${dir//\\/\\\\}"
+            escaped_dir="${escaped_dir//\"/\\\"}"
+
+            local path="${GITSETU_PROFILES_DIR}/${label}.gitconfig"
+            local escaped_path="${path//\\/\\\\}"
+            escaped_path="${escaped_path//\"/\\\"}"
 
             cat <<EOF
 
-[includeIf "${gitdir_kw}${dir}"]
-    path = ${GITSETU_PROFILES_DIR}/${label}.gitconfig
+[includeIf "${gitdir_kw}${escaped_dir}"]
+    path = "${escaped_path}"
 EOF
         fi
     done
@@ -130,6 +139,7 @@ write_global_gitconfig() {
         # File exists WITH managed block → replace it
         local tmp_file
         tmp_file=$(mktemp "${gitconfig}.tmp.XXXXXX")
+        GITSETU_CLEANUP_FILES+=("$tmp_file")
         export MANAGED_BLOCK="$managed_block"
         awk '
             BEGIN { in_block=0; buffer=""; written=0 }
@@ -267,6 +277,7 @@ write_profiles_conf() {
 
     local tmp_file
     tmp_file=$(mktemp "${GITSETU_PROFILES_CONF}.tmp.XXXXXX")
+    GITSETU_CLEANUP_FILES+=("$tmp_file")
 
     # Write header
     cat > "$tmp_file" <<EOF

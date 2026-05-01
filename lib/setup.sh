@@ -336,6 +336,16 @@ cmd_profile() {
     mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu"
     
     while ! mkdir "$lock_dir" 2>/dev/null; do
+        if [[ -f "$lock_dir/pid" ]]; then
+            local lock_pid
+            lock_pid=$(cat "$lock_dir/pid" 2>/dev/null || echo "")
+            if [[ -n "$lock_pid" ]] && ! kill -0 "$lock_pid" 2>/dev/null; then
+                # The process holding the lock is dead. Stale lock!
+                rm -rf "$lock_dir"
+                continue # Immediately retry acquiring
+            fi
+        fi
+        
         retry=$((retry+1))
         if [[ "$retry" -ge "$max_retries" ]]; then
             print_error "Failed to acquire lock for profiles.conf. Is another gitsetu process running?"
@@ -344,8 +354,10 @@ cmd_profile() {
         sleep 0.1
     done
 
-    # Ensure lock is removed on exit
-    trap "rmdir \"$lock_dir\" 2>/dev/null || true" EXIT
+    # Lock acquired. Write PID and register for cleanup.
+    echo $$ > "$lock_dir/pid"
+    GITSETU_CLEANUP_DIRS+=("$lock_dir")
+    GITSETU_CLEANUP_FILES+=("$lock_dir/pid")
 
     load_profiles
     if [[ "$PROFILE_COUNT" -eq 0 ]]; then

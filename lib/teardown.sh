@@ -34,6 +34,7 @@ teardown_gitconfig() {
 
     local tmp_file
     tmp_file=$(mktemp "${gitconfig}.tmp.XXXXXX")
+    GITSETU_CLEANUP_FILES+=("$tmp_file")
 
     awk '
         /\[gitsetu:managed:start\]/ {skip=1; next}
@@ -79,6 +80,7 @@ teardown_sshconfig() {
 
     local tmp_file
     tmp_file=$(mktemp "${ssh_config}.tmp.XXXXXX")
+    GITSETU_CLEANUP_FILES+=("$tmp_file")
 
     awk '
         /\[gitsetu:managed:start\]/ {skip=1; next}

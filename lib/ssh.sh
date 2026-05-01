@@ -187,6 +187,7 @@ write_ssh_config() {
     if [[ -f "$ssh_config" ]]; then
         local tmp_file
         tmp_file=$(mktemp "${ssh_config}.tmp.XXXXXX")
+        GITSETU_CLEANUP_FILES+=("$tmp_file")
 
         awk '
             BEGIN { in_block=0; buffer="" }

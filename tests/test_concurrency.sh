@@ -61,11 +61,35 @@ test_atomic_headless_add() {
     assert_file_contains "$GITSETU_PROFILES_CONF" "global:" "contains global profile" || return 1
     
     for i in {1..5}; do
-        assert_file_contains "$GITSETU_PROFILES_CONF" "user${i}:user${i}@test.com:" "contains user${i} profile" || return 1
+        assert_file_contains "$GITSETU_PROFILES_CONF" "user${i}:user${i}@test.com" "has user${i}" || return 1
     done
 }
+
+test_stale_lock_recovery() {
+    GITSETU_DRY_RUN=0
+    
+    # Create the config dir
+    mkdir -p "$GITSETU_CONFIG_DIR"
+    
+    # Artificially create a stale lock with a dead PID (e.g. 999999)
+    local lock_dir="$GITSETU_CONFIG_DIR/profiles.lock"
+    mkdir "$lock_dir"
+    echo "999999" > "$lock_dir/pid"
+    
+    # Now run gitsetu headless add. It should reap the stale lock and succeed.
+    local gitsetu_bin="$(dirname "${BASH_SOURCE[0]}")/../gitsetu"
+    
+    local output
+    output=$("$gitsetu_bin" profile add "stale-test" --name="Stale" --email="stale@test.com" --dir="$HOME/stale" 2>&1 || echo "FAILED")
+    
+    assert_not_contains "$output" "FAILED" "gitsetu recovered from stale lock and succeeded" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "stale-test:stale@test.com" "stale-test profile added successfully" || return 1
+}
+
+# --- Run ---
 
 printf '\n%btest_concurrency.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "atomic writes survive parallel execution" test_atomic_registry_writes
 run_test "POSIX lock survives parallel headless profile additions" test_atomic_headless_add
+run_test "stale POSIX locks are automatically reaped" test_stale_lock_recovery
 print_results "Concurrency tests"

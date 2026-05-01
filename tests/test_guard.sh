@@ -78,6 +78,24 @@ test_guard_allows_match() {
     assert_not_contains "$output" "Identity mismatch detected" "hook allows match" || return 1
 }
 
+test_guard_blocks_missing_config() {
+    GITSETU_DRY_RUN=0
+    # DO NOT create profiles.conf
+    rm -f "$GITSETU_PROFILES_CONF"
+    
+    install_guard 2>/dev/null
+    
+    setup_repo "$HOME/work"
+    touch "$HOME/work/test.txt"
+    git -C "$HOME/work" add test.txt
+    
+    local output
+    output=$(git -C "$HOME/work" commit -m "Test" 2>&1 || echo "FAILED")
+    
+    assert_contains "$output" "Identity configuration not found" "hook blocks if config is missing" || return 1
+    assert_contains "$output" "FAILED" "commit failed" || return 1
+}
+
 test_guard_pass_through() {
     GITSETU_DRY_RUN=0
     mkdir -p "$(dirname "$GITSETU_PROFILES_CONF")"
@@ -110,5 +128,6 @@ printf '\n%btest_guard.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "install_guard links hook" test_install_guard
 run_test "guard blocks mismatched email" test_guard_blocks_mismatch
 run_test "guard allows matched email" test_guard_allows_match
+run_test "guard blocks missing config" test_guard_blocks_missing_config
 run_test "guard passes through to local hooks" test_guard_pass_through
 print_results "Guard tests"
