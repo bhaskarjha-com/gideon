@@ -170,12 +170,18 @@ teardown_deep() {
     
     local i
     local found_any=0
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local dir="${PROFILE_DIRS[$i]}"
         local p_email="${PROFILE_EMAILS[$i]}"
         local p_key="${PROFILE_KEYS[$i]}"
         
         if [[ -n "$dir" ]] && [[ -d "$dir" ]]; then
+            # Prevent catastrophic global traverse DoS
+            if [[ "$dir" == "/" || "$dir" == "$HOME" || "$dir" == "$HOME/" || "$dir" == "~" || "$dir" == "~/" ]]; then
+                print_warning "Skipping deep cleanup for '$dir' to prevent Denial of Service traversal."
+                continue
+            fi
+            
             # Find all .git/config in the directory tree
             local repo_conf
             while IFS= read -r repo_conf; do

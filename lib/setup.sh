@@ -18,7 +18,7 @@ render_blueprint_dashboard() {
     fi
 
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[i]}"
         local name="${PROFILE_NAMES[i]}"
         local email="${PROFILE_EMAILS[i]}"
@@ -123,13 +123,13 @@ prompt_security() {
     if confirm "Enable Native SSH Commit Signing for all generated profiles?" "n"; then
         export GITSETU_DEFAULT_SIGN=1
         local i
-        for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        for (( i=0; i<PROFILE_COUNT; i++ )); do
             PROFILE_SIGNS[i]=1
         done
     else
         export GITSETU_DEFAULT_SIGN=0
         local i
-        for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        for (( i=0; i<PROFILE_COUNT; i++ )); do
             PROFILE_SIGNS[i]=0
         done
     fi
@@ -153,7 +153,7 @@ execute_blueprint() {
     # 1. Generate SSH keys
     print_section "Generating SSH Keys"
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local key_path="${PROFILE_KEYS[i]}"
         
         if [[ -f "$key_path" ]]; then
@@ -178,7 +178,7 @@ execute_blueprint() {
 
     # 2. Write profile gitconfigs
     print_section "Writing Git Configuration"
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         write_profile_gitconfig "${PROFILE_LABELS[i]}" "${PROFILE_NAMES[i]}" "${PROFILE_EMAILS[i]}" "${PROFILE_SIGNS[i]}" "${PROFILE_KEYS[i]}"
     done
 
@@ -222,7 +222,7 @@ interactive_setup_wizard() {
                 # Validate before applying
                 local valid=1
                 local i
-                for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+                for (( i=0; i<PROFILE_COUNT; i++ )); do
                     if [[ -z "${PROFILE_NAMES[i]}" ]] || [[ -z "${PROFILE_EMAILS[i]}" ]]; then
                         print_error "Profile '${PROFILE_LABELS[i]}' is missing a name or email!"
                         valid=0
@@ -334,8 +334,11 @@ cmd_profile() {
             lock_pid=$(cat "$lock_dir/pid" 2>/dev/null || echo "")
             if [[ -n "$lock_pid" ]] && ! kill -0 "$lock_pid" 2>/dev/null; then
                 # The process holding the lock is dead. Stale lock!
-                rm -rf "$lock_dir"
-                continue # Immediately retry acquiring
+                # Use atomic mv to prevent TOCTOU race conditions where multiple processes try to delete and acquire
+                if mv "$lock_dir" "${lock_dir}.stale.$$" 2>/dev/null; then
+                    rm -rf "${lock_dir}.stale.$$"
+                    continue # Immediately retry acquiring (only the process that successfully mv'd gets here without sleep)
+                fi
             fi
         fi
         
@@ -362,7 +365,7 @@ cmd_profile() {
             # Find if it exists
             local idx=-1
             local i
-            for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+            for (( i=0; i<PROFILE_COUNT; i++ )); do
                 if [[ "${PROFILE_LABELS[i]}" == "$label" ]]; then
                     idx=$i
                     break
@@ -425,7 +428,7 @@ cmd_profile() {
         remove)
             local idx=-1
             local i
-            for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+            for (( i=0; i<PROFILE_COUNT; i++ )); do
                 if [[ "${PROFILE_LABELS[i]}" == "$label" ]]; then
                     idx=$i
                     break

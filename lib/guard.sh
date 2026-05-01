@@ -48,7 +48,8 @@ install_guard() {
 set -euo pipefail
 
 # Find the profiles.conf
-GITSETU_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu/profiles.conf"
+GITSETU_CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gitsetu"
+GITSETU_CONF="$GITSETU_CONF_DIR/profiles.conf"
 
 if [[ ! -f "$GITSETU_CONF" ]]; then
     # No config found — block commit to ensure zero-trust policy.
@@ -93,8 +94,14 @@ while IFS=: read -r label email dir provider || [[ -n "$label" ]]; do
 
     # Check if current dir is under this profile's directory
     if [[ "${current_dir}/" == "${dir_slash}"* ]]; then
-        expected_email="$email"
         expected_label="$label"
+        # Extract email from the local profile.gitconfig to avoid dual-state desync
+        expected_email=$(git config -f "$GITSETU_CONF_DIR/profiles/${label}.gitconfig" user.email 2>/dev/null || true)
+        
+        # If the local config doesn't exist or doesn't have an email, fallback to the registry one (legacy)
+        if [[ -z "$expected_email" && -n "$email" ]]; then
+            expected_email="$email"
+        fi
         # Don't break — last match wins (most specific path)
     fi
 done < "$GITSETU_CONF"

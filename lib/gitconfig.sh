@@ -55,7 +55,7 @@ EOF
     # Add safe.directory for each non-default profile (solves VirtualBox/WSL dubious ownership)
     local has_safe=0
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local dir="${PROFILE_DIRS[$i]}"
         if [[ -n "$dir" ]]; then
             if [[ "$dir" != */ ]]; then
@@ -66,6 +66,9 @@ EOF
                 printf '\n[safe]\n'
                 has_safe=1
             fi
+            # Sanitize newlines to prevent Git INI format corruption
+            dir="${dir//$'\n'/}"
+            
             local escaped_safe_dir="${dir//\\/\\\\}"
             escaped_safe_dir="${escaped_safe_dir//\"/\\\"}"
             printf '    directory = "%s*"\n' "$escaped_safe_dir"
@@ -74,7 +77,7 @@ EOF
 
     # Add includeIf for each non-default profile
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
 
@@ -83,6 +86,9 @@ EOF
             if [[ "$dir" != */ ]]; then
                 dir="${dir}/"
             fi
+            
+            # Sanitize newlines to prevent Git INI format corruption
+            dir="${dir//$'\n'/}"
             
             local escaped_dir="${dir//\\/\\\\}"
             escaped_dir="${escaped_dir//\"/\\\"}"
@@ -287,7 +293,7 @@ write_profiles_conf() {
 EOF
 
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
         local dir="${PROFILE_DIRS[$i]}"
@@ -295,7 +301,9 @@ EOF
         local sign_commits="${PROFILE_SIGNS[$i]:-0}"
         local key_path="${PROFILE_KEYS[$i]:-~/.ssh/id_ed25519_${label}}"
         
-        printf '%s:%s:%s:%s:%s:%s\n' "$label" "$email" "$dir" "$provider" "$sign_commits" "$key_path" >> "$tmp_file"
+        # We leave the email column empty in the registry to prevent dual-state desynchronization.
+        # It will be dynamically parsed from profile.gitconfig at runtime.
+        printf '%s::%s:%s:%s:%s\n' "$label" "$dir" "$provider" "$sign_commits" "$key_path" >> "$tmp_file"
     done
 
     mv "$tmp_file" "$GITSETU_PROFILES_CONF"

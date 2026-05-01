@@ -172,7 +172,7 @@ write_ssh_config() {
     if [[ "$GITSETU_DRY_RUN" -eq 1 ]]; then
         print_info "[DRY RUN] Would update: $ssh_config"
         local i
-        for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        for (( i=0; i<PROFILE_COUNT; i++ )); do
             print_info "[DRY RUN] Would add Host github-${PROFILE_LABELS[$i]}"
         done
         return 0
@@ -217,7 +217,7 @@ write_ssh_config() {
 
     # Append managed blocks for all profiles
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[$i]}"
         local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
         local key_path="${PROFILE_KEYS[$i]:-$HOME/.ssh/id_ed25519_${label}}"
@@ -240,7 +240,7 @@ display_public_keys() {
     print_section "Public Keys — Add These to GitHub/GitLab"
 
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
         local pubkey="${PROFILE_KEYS[$i]:-$HOME/.ssh/id_ed25519_${label}}.pub"

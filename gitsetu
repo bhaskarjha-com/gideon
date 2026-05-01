@@ -426,6 +426,7 @@ cmd_remove() {
     # 1. Remove from profiles.conf using awk (sed is non-portable across BSD/GNU without weird syntax)
     local tmp_conf
     tmp_conf=$(mktemp "${GITSETU_PROFILES_CONF}.tmp.XXXXXX")
+    GITSETU_CLEANUP_FILES+=("$tmp_conf")
     awk -F: -v prof="$profile" '$1 != prof {print}' "$GITSETU_PROFILES_CONF" > "$tmp_conf"
     mv "$tmp_conf" "$GITSETU_PROFILES_CONF"
     

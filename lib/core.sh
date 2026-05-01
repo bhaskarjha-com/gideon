@@ -80,22 +80,31 @@ load_profiles() {
         [[ "$label" == "#"* ]] && continue
         [[ -z "$label" ]] && continue
         PROFILE_LABELS+=("$label")
-        PROFILE_EMAILS+=("$email")
         PROFILE_DIRS+=("$dir")
         PROFILE_PROVIDERS+=("${provider:-github.com}")
         PROFILE_SIGNS+=("${sign_commits:-0}")
         PROFILE_KEYS+=("${key_path:-$HOME/.ssh/id_ed25519_${label}}")
         
-        # Load name from profile config, fallback to global
+        # Load name and email from profile config
         local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
         local loaded_name=""
+        local loaded_email=""
+        
         if [[ -f "$profile_path" ]]; then
             loaded_name=$(git config -f "$profile_path" user.name 2>/dev/null || echo "")
+            loaded_email=$(git config -f "$profile_path" user.email 2>/dev/null || echo "")
         fi
+        
         if [[ -z "$loaded_name" ]]; then
             loaded_name=$(git config --global user.name 2>/dev/null || echo "")
         fi
         PROFILE_NAMES+=("$loaded_name")
+        
+        # If email was provided in profiles.conf (legacy fallback) and wasn't found in .gitconfig, use it
+        if [[ -z "$loaded_email" && -n "$email" ]]; then
+            loaded_email="$email"
+        fi
+        PROFILE_EMAILS+=("$loaded_email")
         
         PROFILE_COUNT=$((PROFILE_COUNT + 1))
     done < "$GITSETU_PROFILES_CONF"
@@ -143,7 +152,7 @@ remove_profile_at_index() {
     local new_keys=()
     
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         if [[ "$i" -ne "$target_idx" ]]; then
             new_labels+=("${PROFILE_LABELS[$i]}")
             new_names+=("${PROFILE_NAMES[$i]}")

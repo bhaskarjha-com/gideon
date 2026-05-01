@@ -161,6 +161,17 @@ test_teardown_deep_strips_local_configs() {
     assert_equals "custom@example.com" "$unmapped_email" "Custom repo identity should remain untouched"
 }
 
+test_teardown_dos_prevention() {
+    # Test that teardown_deep refuses to traverse / or $HOME
+    mkdir -p "$(dirname "$GITSETU_PROFILES_CONF")"
+    echo "dos::$HOME:github.com:0:" > "$GITSETU_PROFILES_CONF"
+    
+    local output
+    output=$(teardown_deep 2>&1 || true)
+    
+    assert_contains "$output" "Skipping deep cleanup for '$HOME' to prevent Denial of Service traversal" "blocks $HOME traversal" || return 1
+}
+
 # ------------------------------------------------------------------------------
 # Test Runner
 # ------------------------------------------------------------------------------
@@ -171,5 +182,6 @@ run_test "teardown_config_dir completely removes ~/.config/gitsetu" test_teardow
 run_test "uninstall_guard removes hook and unsets core.hooksPath" test_teardown_uninstalls_guard
 run_test "teardown_all leaves generated SSH keys intact for safety" test_teardown_keeps_ssh_keys
 run_test "teardown_deep selectively strips matched local repo identities" test_teardown_deep_strips_local_configs
+run_test "teardown_deep prevents root/home filesystem DoS" test_teardown_dos_prevention
 
 print_results "Teardown tests"

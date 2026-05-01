@@ -123,6 +123,35 @@ EOF
     
     assert_contains "$output" "LOCAL HOOK PASSTHROUGH SUCCESS" "local hook ran" || return 1
 }
+test_guard_dual_state_desync_recovery() {
+    # Test that guard reads from profile.gitconfig instead of the registry
+    GITSETU_DRY_RUN=0
+    mkdir -p "$(dirname "$GITSETU_PROFILES_CONF")"
+    mkdir -p "$GITSETU_PROFILES_DIR"
+    
+    # Registry has NO email
+    echo "work::$HOME/work:github.com:0:" > "$GITSETU_PROFILES_CONF"
+    # Local config has the truth
+    cat > "$GITSETU_PROFILES_DIR/work.gitconfig" <<EOF
+[user]
+    name = Test
+    email = new.truth@example.com
+EOF
+
+    install_guard 2>/dev/null
+    
+    setup_repo "$HOME/work"
+    git -C "$HOME/work" config user.email "new.truth@example.com"
+    git -C "$HOME/work" config user.name "Test"
+    
+    touch "$HOME/work/test3.txt"
+    git -C "$HOME/work" add test3.txt
+    
+    local output
+    output=$(GIT_AUTHOR_NAME="T" GIT_AUTHOR_EMAIL="new.truth@example.com" GIT_COMMITTER_NAME="T" GIT_COMMITTER_EMAIL="new.truth@example.com" git -C "$HOME/work" commit -m "Test 3" 2>&1 || echo "FAILED")
+    
+    assert_not_contains "$output" "FAILED" "guard allowed commit using the dynamically read email" || return 1
+}
 
 printf '\n%btest_guard.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "install_guard links hook" test_install_guard
@@ -130,4 +159,5 @@ run_test "guard blocks mismatched email" test_guard_blocks_mismatch
 run_test "guard allows matched email" test_guard_allows_match
 run_test "guard blocks missing config" test_guard_blocks_missing_config
 run_test "guard passes through to local hooks" test_guard_pass_through
+run_test "guard dynamically reads email to prevent desync" test_guard_dual_state_desync_recovery
 print_results "Guard tests"

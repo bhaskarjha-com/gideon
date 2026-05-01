@@ -78,8 +78,8 @@ test_integration_ssh_config_created() {
 
 test_integration_profiles_conf_created() {
     assert_file_exists "$GITSETU_PROFILES_CONF" "profiles.conf exists" &&
-    assert_file_contains "$GITSETU_PROFILES_CONF" "global:global@test.com:" "global entry" &&
-    assert_file_contains "$GITSETU_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro" "pro entry"
+    assert_file_contains "$GITSETU_PROFILES_CONF" "global:::" "global entry" &&
+    assert_file_contains "$GITSETU_PROFILES_CONF" "pro::$HOME/dev/pro" "pro entry"
 }
 
 test_integration_gitconfig_parseable() {

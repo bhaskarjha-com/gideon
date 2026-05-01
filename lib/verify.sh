@@ -13,7 +13,7 @@ verify_ssh_keys() {
     local issues=0
     local i
 
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[$i]}"
         local key_path="$HOME/.ssh/id_ed25519_${label}"
         local pub_path="${key_path}.pub"
@@ -63,7 +63,7 @@ verify_git_config() {
     fi
 
     # Check profile configs exist
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
 
         local label="${PROFILE_LABELS[$i]}"
         local profile_path="$GITSETU_PROFILES_DIR/${label}.gitconfig"
@@ -75,7 +75,7 @@ verify_git_config() {
     done
 
     # Verify includeIf works in actual git repos (if any exist)
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
 
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
@@ -123,7 +123,7 @@ verify_ssh_connectivity() {
     local issues=0
     local i
 
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[$i]}"
         local provider="${PROFILE_PROVIDERS[$i]:-github.com}"
         
@@ -193,7 +193,7 @@ verify_all() {
         "-------" "-----" "-------" "-----" "------"
 
     local i
-    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+    for (( i=0; i<PROFILE_COUNT; i++ )); do
         local label="${PROFILE_LABELS[$i]}"
         local email="${PROFILE_EMAILS[$i]}"
         local key_path="$HOME/.ssh/id_ed25519_${label}"

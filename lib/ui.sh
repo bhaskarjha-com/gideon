@@ -287,7 +287,7 @@ ask_choice() {
     printf >&2 '  %b[?]%b %s:\n' "$CYAN" "$RESET" "$prompt"
 
     local i
-    for i in $(seq 0 $((count - 1))); do
+    for (( i=0; i<count; i++ )); do
         printf >&2 '    %b%d)%b %s\n' "$CYAN" "$((i + 1))" "$RESET" "${options[$i]}"
     done
 

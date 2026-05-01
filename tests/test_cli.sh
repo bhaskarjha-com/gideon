@@ -50,6 +50,15 @@ test_cli_help_flag() {
     assert_exit_code 0 bash "$GITSETU_EXE" --help || return 1
 }
 
+test_cli_array_loop_crash_prevention() {
+    # Test that list doesn't crash when profiles.conf is completely empty (0 profiles)
+    mkdir -p "$HOME/.config/gitsetu"
+    touch "$HOME/.config/gitsetu/profiles.conf"
+    local output
+    output=$(bash "$GITSETU_EXE" list 2>&1 || true)
+    assert_not_contains "$output" "bad array subscript" "survives 0 profile state without array subscript crash" || return 1
+}
+
 printf '\n%btest_cli.sh%b\n' "$T_BOLD" "$T_RESET"
 run_test "no arguments shows help" test_cli_no_args_shows_help
 run_test "invalid command caught" test_cli_invalid_command
@@ -57,4 +66,5 @@ run_test "add with missing args caught" test_cli_add_missing_args
 run_test "add with invalid label caught" test_cli_add_invalid_label
 run_test "remove with missing args caught" test_cli_remove_invalid_arg
 run_test "--help prints menu and exits 0" test_cli_help_flag
+run_test "empty registry array loop safety" test_cli_array_loop_crash_prevention
 print_results "CLI tests"

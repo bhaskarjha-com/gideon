@@ -100,7 +100,7 @@ discover_workspace_dir() {
     # 1. Parse existing ~/.gitconfig for includeIf paths containing the label
     if [[ -f "$HOME/.gitconfig" ]]; then
         local extracted
-        extracted=$(grep -i "includeIf.*gitdir:.*${label}" "$HOME/.gitconfig" | head -n1 | sed -E 's/.*gitdir:([^"]+)\/?"].*/\1/' || true)
+        extracted=$(grep -i "includeIf.*gitdir:.*${label}" "$HOME/.gitconfig" | head -n1 | sed 's/.*gitdir:\([^"]*\)".*/\1/' || true)
         if [[ -n "$extracted" ]]; then
             extracted="${extracted/#\~/$HOME}"
             extracted="${extracted%/}"
@@ -111,7 +111,7 @@ discover_workspace_dir() {
         fi
         
         # Or look for exact match if label is something else
-        extracted=$(grep -i "includeIf.*gitdir" "$HOME/.gitconfig" | grep -i "$label" | head -n1 | sed -E 's/.*gitdir:([^"]+)\/?"].*/\1/' || true)
+        extracted=$(grep -i "includeIf.*gitdir" "$HOME/.gitconfig" | grep -i "$label" | head -n1 | sed 's/.*gitdir:\([^"]*\)".*/\1/' || true)
         if [[ -n "$extracted" ]]; then
             extracted="${extracted/#\~/$HOME}"
             extracted="${extracted%/}"

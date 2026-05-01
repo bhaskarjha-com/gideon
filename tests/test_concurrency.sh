@@ -34,8 +34,8 @@ test_atomic_registry_writes() {
     # Actually, the file has a 3-line header. 3 header + 2 profiles = 5 lines.
     assert_equals "5" "$line_count" "profiles.conf has exactly 5 lines (no data dropped or interleaved)" || return 1
     
-    assert_file_contains "$GITSETU_PROFILES_CONF" "global:global@test.com::github.com:0:$HOME/.ssh/id_ed25519_global" "has global" || return 1
-    assert_file_contains "$GITSETU_PROFILES_CONF" "pro:pro@test.com:$HOME/dev/pro:github.com:0:$HOME/.ssh/id_ed25519_pro" "has pro" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "global:::" "has global" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "pro::$HOME/dev/pro:github.com:0:$HOME/.ssh/id_ed25519_pro" "has pro" || return 1
 }
 
 test_atomic_headless_add() {
@@ -60,9 +60,11 @@ test_atomic_headless_add() {
     
     assert_file_contains "$GITSETU_PROFILES_CONF" "global:" "contains global profile" || return 1
     
-    for i in {1..5}; do
-        assert_file_contains "$GITSETU_PROFILES_CONF" "user${i}:user${i}@test.com" "has user${i}" || return 1
-    done
+    assert_file_contains "$GITSETU_PROFILES_CONF" "user1::" "has user1" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "user2::" "has user2" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "user3::" "has user3" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "user4::" "has user4" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "user5::" "has user5" || return 1
 }
 
 test_stale_lock_recovery() {
@@ -83,7 +85,7 @@ test_stale_lock_recovery() {
     output=$("$gitsetu_bin" profile add "stale-test" --name="Stale" --email="stale@test.com" --dir="$HOME/stale" 2>&1 || echo "FAILED")
     
     assert_not_contains "$output" "FAILED" "gitsetu recovered from stale lock and succeeded" || return 1
-    assert_file_contains "$GITSETU_PROFILES_CONF" "stale-test:stale@test.com" "stale-test profile added successfully" || return 1
+    assert_file_contains "$GITSETU_PROFILES_CONF" "stale-test::" "stale-test profile added successfully" || return 1
 }
 
 # --- Run ---
