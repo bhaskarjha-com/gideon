@@ -66,6 +66,7 @@ graph TD
 ```bash
 curl -sL https://raw.githubusercontent.com/bhaskarjha-com/gitsetu/main/install.sh | bash
 ```
+> **Note:** The installer creates a `git-setu` alias, meaning you can run GitSetu natively as `git setu`!
 
 **2. Add your identities once:**
 ```bash
@@ -77,7 +78,7 @@ $ gitsetu add freelance "AK Dev" ak@freelance.io ~/clients
 
 **3. Verify your setup:**
 ```bash
-$ gitsetu status
+$ git setu status
 personal aditya@gmail.com ~/personal ✓ active
 work aditya@company.com ~/work
 freelance ak@freelance.io ~/clients
@@ -101,8 +102,15 @@ Author: Aditya Kumar <aditya@company.com> ← correct, automatically
 - **no daemon:** GitSetu writes config once and lets Git's native `includeIf` do the switching. Zero background processes. Zero memory footprint.
 - **directory-scoped:** Identity follows your cursor. Enter `~/work` — you're your work self.
 - **ssh isolated:** Each profile gets its own ED25519 keypair and SSH host alias.
-- **non-destructive:** Your existing config is safe. GitSetu appends to `~/.gitconfig` and `~/.ssh/config` with clearly marked blocks. Uninstall removes exactly what it added.
+- **non-destructive:** Your existing config is safe. GitSetu appends to `~/.gitconfig` and `~/.ssh/config` with clearly marked blocks. Uninstall removes exactly what it added (use `gitsetu teardown --deep` to also strip local repo overrides).
 - **open standard:** No lock-in. GitSetu generates standard Git config and standard SSH config. You can read, edit, or delete what it creates.
+
+### Shell Autocompletion
+GitSetu provides rich <kbd>TAB</kbd> autocompletion for subcommands and profile names.
+Add the following to your `~/.bashrc` or `~/.zshrc`:
+```bash
+source ~/.local/bin/completion.sh # or the path where gitsetu is installed
+```
 
 ---
 
@@ -127,7 +135,16 @@ $ git commit -m "fix critical auth bug"
 
 ---
 
-## 06. Ecosystem Comparison
+## 06. Enterprise Automation & Concurrency
+
+GitSetu is designed from the ground up for highly parallel CI/CD environments and zero-touch `ansible` provisioning. 
+It guarantees absolute filesystem integrity through pure Bash 3.2 constraints:
+* **Atomic POSIX Locks:** Headless profile creation (`gitsetu profile add`) utilizes an atomic `mkdir` directory lock (`~/.config/gitsetu/profiles.lock`). This perfectly eliminates read-modify-write lost-update race conditions if 50 headless scripts invoke GitSetu at the exact same millisecond. 
+* **Atomic Filesystem Swaps:** Configuration files are never modified in-place. They are written to a temporary (`mktemp`) file and atomically swapped via `mv`, mathematically preventing interleaved or corrupted text files without relying on external non-standard binaries like `flock`.
+
+---
+
+## 07. Ecosystem Comparison
 
 | Feature | `gitego` (Go) | `gguser` (Node) | `git-profile` (Rust/JS) | `karn` (Go) | **GitSetu (Bash)** |
 |---------|:---:|:---:|:---:|:---:|:---:|
@@ -141,7 +158,7 @@ $ git commit -m "fix critical auth bug"
 
 ---
 
-## 07. Philosophy
+## 08. Philosophy
 
 In Sanskrit, *Setu (सेतु)* is the bridge that connects two shores without disturbing either. It doesn't change the shore. It doesn't own the water. It simply makes crossing effortless and reliable.
 
