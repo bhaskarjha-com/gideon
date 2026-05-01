@@ -154,9 +154,13 @@ ask() {
         printf >&2 '  %b[?]%b %s: ' "$CYAN" "$RESET" "$prompt"
     fi
 
-    read -r REPLY </dev/tty
-    if [[ -z "$REPLY" ]] && [[ -n "$default" ]]; then
+    if [[ -n "${CI:-}" ]] || [[ ! -t 0 ]]; then
         REPLY="$default"
+    else
+        read -r REPLY </dev/tty || true
+        if [[ -z "$REPLY" ]] && [[ -n "$default" ]]; then
+            REPLY="$default"
+        fi
     fi
 }
 
@@ -166,9 +170,14 @@ ask_required() {
     local prompt="$1"
     REPLY=""
 
+    if [[ -n "${CI:-}" ]] || [[ ! -t 0 ]]; then
+        print_error "Interactive prompt failed in CI/non-TTY environment: $prompt"
+        exit 1
+    fi
+
     while [[ -z "$REPLY" ]]; do
         printf >&2 '  %b[?]%b %s %b(required)%b: ' "$CYAN" "$RESET" "$prompt" "$DIM" "$RESET"
-        read -r REPLY </dev/tty
+        read -r REPLY </dev/tty || true
 
         if [[ -z "$REPLY" ]]; then
             print_warning "This field is required."
@@ -214,9 +223,14 @@ ask_count() {
     local max="$3"
     local valid=0
 
+    if [[ -n "${CI:-}" ]] || [[ ! -t 0 ]]; then
+        print_error "Interactive prompt failed in CI/non-TTY environment: $prompt"
+        exit 1
+    fi
+
     while [[ "$valid" -eq 0 ]]; do
         printf >&2 '  %b[?]%b %s %b(%d-%d)%b: ' "$CYAN" "$RESET" "$prompt" "$DIM" "$min" "$max" "$RESET"
-        read -r REPLY </dev/tty
+        read -r REPLY </dev/tty || true
 
         if [[ "$REPLY" =~ ^[0-9]+$ ]] && [[ "$REPLY" -ge "$min" ]] && [[ "$REPLY" -le "$max" ]]; then
             valid=1
@@ -240,7 +254,12 @@ confirm() {
     fi
 
     printf >&2 '  %b[?]%b %s %b[%s]%b: ' "$CYAN" "$RESET" "$prompt" "$DIM" "$hint" "$RESET"
-    read -r REPLY </dev/tty
+    
+    if [[ -n "${CI:-}" ]] || [[ ! -t 0 ]]; then
+        REPLY="$default"
+    else
+        read -r REPLY </dev/tty || true
+    fi
 
     # Empty reply → use default
     if [[ -z "$REPLY" ]]; then
@@ -272,9 +291,14 @@ ask_choice() {
         printf >&2 '    %b%d)%b %s\n' "$CYAN" "$((i + 1))" "$RESET" "${options[$i]}"
     done
 
+    if [[ -n "${CI:-}" ]] || [[ ! -t 0 ]]; then
+        print_error "Interactive prompt failed in CI/non-TTY environment: $prompt"
+        exit 1
+    fi
+
     while [[ "$valid" -eq 0 ]]; do
         printf >&2 '  Choice %b(1-%d)%b: ' "$DIM" "$count" "$RESET"
-        read -r REPLY </dev/tty
+        read -r REPLY </dev/tty || true
 
         if [[ "$REPLY" =~ ^[0-9]+$ ]] && [[ "$REPLY" -ge 1 ]] && [[ "$REPLY" -le "$count" ]]; then
             REPLY="${options[$((REPLY - 1))]}"
