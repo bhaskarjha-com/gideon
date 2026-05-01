@@ -16,8 +16,10 @@ echo "Downloading GitSetu..."
 mkdir -p "$INSTALL_DIR"
 curl -sL "$REPO_URL" -o "$EXECUTABLE"
 chmod +x "$EXECUTABLE"
+ln -sf "$EXECUTABLE" "$INSTALL_DIR/git-setu"
 
 echo "✓ GitSetu installed to $EXECUTABLE"
+echo "✓ Native Git alias created: git setu"
 
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     echo ""
