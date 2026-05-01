@@ -126,3 +126,42 @@ array_contains() {
     done
     return 1
 }
+
+# ------------------------------------------------------------------------------
+# Helper: safely remove a profile by index (Bash 3.2 array slice drops empty strings)
+# Usage: remove_profile_at_index <idx>
+# ------------------------------------------------------------------------------
+remove_profile_at_index() {
+    local target_idx="$1"
+    
+    local new_labels=()
+    local new_names=()
+    local new_emails=()
+    local new_dirs=()
+    local new_providers=()
+    local new_signs=()
+    local new_keys=()
+    
+    local i
+    for i in $(seq 0 $((PROFILE_COUNT - 1))); do
+        if [[ "$i" -ne "$target_idx" ]]; then
+            new_labels+=("${PROFILE_LABELS[$i]}")
+            new_names+=("${PROFILE_NAMES[$i]}")
+            new_emails+=("${PROFILE_EMAILS[$i]}")
+            new_dirs+=("${PROFILE_DIRS[$i]}")
+            new_providers+=("${PROFILE_PROVIDERS[$i]}")
+            new_signs+=("${PROFILE_SIGNS[$i]}")
+            new_keys+=("${PROFILE_KEYS[$i]}")
+        fi
+    done
+    
+    PROFILE_LABELS=("${new_labels[@]}")
+    PROFILE_NAMES=("${new_names[@]}")
+    PROFILE_EMAILS=("${new_emails[@]}")
+    PROFILE_DIRS=("${new_dirs[@]}")
+    PROFILE_PROVIDERS=("${new_providers[@]}")
+    PROFILE_SIGNS=("${new_signs[@]}")
+    PROFILE_KEYS=("${new_keys[@]}")
+    
+    PROFILE_COUNT=$((PROFILE_COUNT - 1))
+}

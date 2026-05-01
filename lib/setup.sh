@@ -247,16 +247,9 @@ interactive_setup_wizard() {
             "R")
                 read -r -p "Enter profile number to remove: " idx
                 if [[ "$idx" =~ ^[0-9]+$ ]] && [[ "$idx" -ge 2 ]] && [[ "$idx" -le "$PROFILE_COUNT" ]]; then
-                    # Bash 3.2 array removal hack
+                    # Use safe array removal to preserve empty strings
                     local rem_idx=$((idx - 1))
-                    PROFILE_LABELS=("${PROFILE_LABELS[@]:0:$rem_idx}" "${PROFILE_LABELS[@]:$((rem_idx + 1))}")
-                    PROFILE_NAMES=("${PROFILE_NAMES[@]:0:$rem_idx}" "${PROFILE_NAMES[@]:$((rem_idx + 1))}")
-                    PROFILE_EMAILS=("${PROFILE_EMAILS[@]:0:$rem_idx}" "${PROFILE_EMAILS[@]:$((rem_idx + 1))}")
-                    PROFILE_DIRS=("${PROFILE_DIRS[@]:0:$rem_idx}" "${PROFILE_DIRS[@]:$((rem_idx + 1))}")
-                    PROFILE_KEYS=("${PROFILE_KEYS[@]:0:$rem_idx}" "${PROFILE_KEYS[@]:$((rem_idx + 1))}")
-                    PROFILE_PROVIDERS=("${PROFILE_PROVIDERS[@]:0:$rem_idx}" "${PROFILE_PROVIDERS[@]:$((rem_idx + 1))}")
-                    PROFILE_SIGNS=("${PROFILE_SIGNS[@]:0:$rem_idx}" "${PROFILE_SIGNS[@]:$((rem_idx + 1))}")
-                    PROFILE_COUNT=$((PROFILE_COUNT - 1))
+                    remove_profile_at_index "$rem_idx"
                 else
                     print_warning "Cannot remove default profile or invalid index."
                     sleep 1
@@ -447,15 +440,8 @@ cmd_profile() {
                 exit 1
             fi
 
-            # Bash 3.2 array removal hack
-            PROFILE_LABELS=("${PROFILE_LABELS[@]:0:$idx}" "${PROFILE_LABELS[@]:$((idx + 1))}")
-            PROFILE_NAMES=("${PROFILE_NAMES[@]:0:$idx}" "${PROFILE_NAMES[@]:$((idx + 1))}")
-            PROFILE_EMAILS=("${PROFILE_EMAILS[@]:0:$idx}" "${PROFILE_EMAILS[@]:$((idx + 1))}")
-            PROFILE_DIRS=("${PROFILE_DIRS[@]:0:$idx}" "${PROFILE_DIRS[@]:$((idx + 1))}")
-            PROFILE_KEYS=("${PROFILE_KEYS[@]:0:$idx}" "${PROFILE_KEYS[@]:$((idx + 1))}")
-            PROFILE_PROVIDERS=("${PROFILE_PROVIDERS[@]:0:$idx}" "${PROFILE_PROVIDERS[@]:$((idx + 1))}")
-            PROFILE_SIGNS=("${PROFILE_SIGNS[@]:0:$idx}" "${PROFILE_SIGNS[@]:$((idx + 1))}")
-            PROFILE_COUNT=$((PROFILE_COUNT - 1))
+            # Use safe array removal to preserve empty strings
+            remove_profile_at_index "$idx"
 
             execute_blueprint
             ;;
