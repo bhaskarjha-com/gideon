@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Sign install.sh with Sigstore
         uses: sigstore/gh-action-sigstore-python@v2.1.1
