@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Sign install.sh with Sigstore
-        uses: sigstore/gh-action-sigstore-python@v2.1.1
+        uses: sigstore/gh-action-sigstore-python@v3.4.0
         with:
           inputs: install.sh
           upload-signing-artifacts: true
